@@ -114,6 +114,7 @@ class NERPipeline:
                     "start": rm.mention.start,
                     "end": rm.mention.end,
                     "label": rm.mention.label,
+                    "context": rm.mention.context,
                     "entity_id": rm.entity.id if rm.entity else None,
                     "entity_title": rm.entity.title if rm.entity else None,
                     "entity_description": (

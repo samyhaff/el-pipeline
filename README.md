@@ -10,7 +10,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Quick start (CLI)
+## Quick start
+
+### Web UI (Gradio)
+Launch the interactive web interface:
+```bash
+python app.py
+```
+Open `http://localhost:7860` and configure the pipeline through the UI. See [GRADIO_UI.md](GRADIO_UI.md) for details.
+
+### CLI
 1) Prepare a JSONL knowledge base with fields: `id`, `title`, `description` (plus optional metadata).
 2) Create a config file, e.g. `config.json`:
 ```json

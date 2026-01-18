@@ -18,12 +18,14 @@ class DenseCandidateGenerator:
         kb: KnowledgeBase,
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         top_k: int = 20,
+        use_context: bool = True,
     ):
         if kb is None:
             raise ValueError("Dense retrieval requires a knowledge base.")
         self.kb = kb
         self.model = SentenceTransformer(model_name)
         self.top_k = top_k
+        self.use_context = use_context
 
         self.entities = list(kb.all_entities())
         corpus = [e.description or e.title for e in self.entities]
@@ -32,9 +34,15 @@ class DenseCandidateGenerator:
         self.index = faiss.IndexFlatIP(dim)
         self.index.add(embeddings.astype(np.float32))
 
-    def generate(self, mention: Mention, doc: Document):
+    def generate(self, mention: Mention, doc: Document) -> List[Candidate]:
+        # Use context if available and enabled for better semantic matching
+        if self.use_context and mention.context:
+            query_text = f"{mention.text}: {mention.context}"
+        else:
+            query_text = mention.text
+        
         query = self.model.encode(
-            [mention.text], convert_to_numpy=True, normalize_embeddings=True
+            [query_text], convert_to_numpy=True, normalize_embeddings=True
         )
         scores, idx = self.index.search(query.astype(np.float32), self.top_k)
         results: List[Candidate] = []

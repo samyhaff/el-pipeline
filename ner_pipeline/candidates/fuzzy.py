@@ -20,6 +20,7 @@ class FuzzyCandidateGenerator:
         self.top_k = top_k
 
     def generate(self, mention: Mention, doc: Document) -> List[Candidate]:
+        # Fuzzy matching uses mention text only (context not useful for string matching)
         results = process.extract(mention.text, self.titles, limit=self.top_k)
         candidates: List[Candidate] = []
         for title, score, idx in results:

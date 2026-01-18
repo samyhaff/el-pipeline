@@ -15,7 +15,7 @@ def _tokenize(text: str) -> List[str]:
 class BM25CandidateGenerator:
     """BM25 over entity descriptions."""
 
-    def __init__(self, kb: KnowledgeBase, top_k: int = 20):
+    def __init__(self, kb: KnowledgeBase, top_k: int = 20, use_context: bool = True):
         if kb is None:
             raise ValueError("BM25 requires a knowledge base.")
         self.kb = kb
@@ -24,9 +24,16 @@ class BM25CandidateGenerator:
         corpus = [_tokenize(d) for d in descriptions]
         self.bm25 = BM25Okapi(corpus)
         self.top_k = top_k
+        self.use_context = use_context
 
     def generate(self, mention: Mention, doc: Document) -> List[Candidate]:
-        scores = self.bm25.get_scores(_tokenize(mention.text))
+        # Use context if available and enabled for better retrieval
+        if self.use_context and mention.context:
+            query_text = f"{mention.text} {mention.context}"
+        else:
+            query_text = mention.text
+        
+        scores = self.bm25.get_scores(_tokenize(query_text))
         paired = list(zip(self.entities, scores))
         paired.sort(key=lambda x: x[1], reverse=True)
         top = paired[: self.top_k]
