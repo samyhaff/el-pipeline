@@ -74,7 +74,7 @@ def _ensure_extensions():
         "model_name": DEFAULT_LLM_MODEL,
         "tensor_parallel_size": DEFAULT_TENSOR_PARALLEL_SIZE,
         "max_model_len": DEFAULT_MAX_MODEL_LEN,
-        "add_none_candidate": False,
+        "add_none_candidate": True,  # Enable NIL handling by default
         "add_descriptions": True,
         "disable_thinking": True,  # Disable thinking by default for faster responses
         "system_prompt": None,
@@ -328,7 +328,7 @@ class LELAvLLMDisambiguatorComponent:
     "ner_pipeline_lela_transformers_disambiguator",
     default_config={
         "model_name": DEFAULT_LLM_MODEL,
-        "add_none_candidate": False,
+        "add_none_candidate": True,  # Enable NIL handling by default
         "add_descriptions": True,
         "disable_thinking": True,
         "system_prompt": None,

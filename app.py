@@ -57,33 +57,66 @@ def get_available_components() -> Dict[str, List[str]]:
 
 
 def format_highlighted_text(result: Dict) -> List[Tuple[str, Optional[str]]]:
-    """Convert pipeline result to HighlightedText format."""
+    """Convert pipeline result to HighlightedText format.
+
+    Entities are shown with different labels based on linking status:
+    - Linked: "LABEL: Entity Title" (e.g., "PERSON: Albert Einstein")
+    - Unlinked: "LABEL [NOT IN KB]" (e.g., "PERSON [NOT IN KB]")
+    """
     text = result["text"]
     entities = result["entities"]
-    
+
     if not entities:
         return [(text, None)]
-    
+
     sorted_entities = sorted(entities, key=lambda e: e["start"])
-    
+
     highlighted = []
     last_end = 0
-    
+
     for entity in sorted_entities:
         if entity["start"] > last_end:
             highlighted.append((text[last_end:entity["start"]], None))
-        
+
         label = entity.get("label", "ENT")
         if entity.get("entity_title"):
+            # Entity was linked to KB
             label = f"{label}: {entity['entity_title']}"
-        
+        else:
+            # Entity NOT linked - mark as unlinked
+            label = f"{label} [NOT IN KB]"
+
         highlighted.append((entity["text"], label))
         last_end = entity["end"]
-    
+
     if last_end < len(text):
         highlighted.append((text[last_end:], None))
-    
+
     return highlighted
+
+
+def compute_linking_stats(result: Dict) -> str:
+    """Compute statistics about entity linking results."""
+    entities = result.get("entities", [])
+    if not entities:
+        return "No entities found."
+
+    total = len(entities)
+    linked = sum(1 for e in entities if e.get("entity_title"))
+    unlinked = total - linked
+
+    # Compute average confidence for linked entities
+    confidences = [e.get("linking_confidence") for e in entities if e.get("linking_confidence") is not None]
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+
+    stats = f"**Entity Linking Statistics**\n\n"
+    stats += f"- Total entities: {total}\n"
+    stats += f"- Linked to KB: {linked} ({100*linked/total:.1f}%)\n"
+    stats += f"- Not in KB: {unlinked} ({100*unlinked/total:.1f}%)\n"
+    if confidences:
+        stats += f"- Avg. confidence (linked): {avg_confidence:.3f}\n"
+
+    return stats
 
 
 def run_pipeline(
@@ -105,7 +138,7 @@ def run_pipeline(
     disambig_type: str,
     kb_type: str,
     progress=gr.Progress(),
-) -> Tuple[List[Tuple[str, Optional[str]]], Dict]:
+) -> Tuple[List[Tuple[str, Optional[str]]], str, Dict]:
     """Run the NER pipeline with selected configuration."""
     
     if not kb_file:
@@ -203,12 +236,13 @@ def run_pipeline(
         raise gr.Error(f"Pipeline execution failed: {str(e)}")
     
     progress(0.9, desc="Formatting output...")
-    
+
     highlighted = format_highlighted_text(result)
-    
+    stats = compute_linking_stats(result)
+
     progress(1.0, desc="Done!")
-    
-    return highlighted, result
+
+    return highlighted, stats, result
 
 
 def update_ner_params(ner_choice: str):
@@ -353,9 +387,10 @@ if __name__ == "__main__":
                     cand_top_k = gr.Slider(
                         minimum=1,
                         maximum=100,
-                        value=10,
+                        value=64,
                         step=1,
                         label="Top K Candidates",
+                        info="Retrieve this many candidates before reranking",
                     )
                     cand_use_context = gr.Checkbox(
                         label="Use Context",
@@ -399,13 +434,18 @@ if __name__ == "__main__":
             
             with gr.Column(scale=1):
                 gr.Markdown("### Output")
-                
+
                 highlighted_output = gr.HighlightedText(
                     label="Linked Entities",
                     color_map={},
                     show_legend=True,
                 )
-                
+
+                stats_output = gr.Markdown(
+                    label="Linking Statistics",
+                    value="*Run the pipeline to see entity linking statistics.*",
+                )
+
                 json_output = gr.JSON(
                     label="Full Pipeline Output",
                 )
@@ -449,7 +489,7 @@ if __name__ == "__main__":
                 disambig_type,
                 kb_type,
             ],
-            outputs=[highlighted_output, json_output],
+            outputs=[highlighted_output, stats_output, json_output],
         )
         
         gr.Markdown("""

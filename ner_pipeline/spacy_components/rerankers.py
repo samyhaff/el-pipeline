@@ -32,6 +32,8 @@ def _ensure_candidates_extension():
     """Ensure the candidates extension is registered on Span."""
     if not Span.has_extension("candidates"):
         Span.set_extension("candidates", default=[])
+    if not Span.has_extension("candidate_scores"):
+        Span.set_extension("candidate_scores", default=[])
 
 
 # ============================================================================
@@ -160,8 +162,9 @@ class LELAEmbedderRerankerComponent:
             scored_candidates.sort(key=lambda x: x[1], reverse=True)
             top_candidates = scored_candidates[:self.top_k]
 
-            # Update candidates (keep as LELA format)
+            # Update candidates and scores (keep as LELA format)
             ent._.candidates = [c for c, _ in top_candidates]
+            ent._.candidate_scores = [float(s) for _, s in top_candidates]
 
             logger.debug(
                 f"Reranked {len(candidates)} to {len(ent._.candidates)} for '{ent.text}'"
@@ -262,8 +265,9 @@ class CrossEncoderRerankerComponent:
             scored_candidates.sort(key=lambda x: x[1], reverse=True)
             top_candidates = scored_candidates[:self.top_k]
 
-            # Update candidates
+            # Update candidates and scores
             ent._.candidates = [c for c, _ in top_candidates]
+            ent._.candidate_scores = [float(s) for _, s in top_candidates]
 
             logger.debug(
                 f"Cross-encoder reranked {len(candidates)} to {len(ent._.candidates)} for '{ent.text}'"

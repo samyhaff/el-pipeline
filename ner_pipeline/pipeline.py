@@ -222,6 +222,8 @@ class NERPipeline:
         for ent in spacy_doc.ents:
             # Get candidates (LELA format: List[Tuple[str, str]])
             candidates_tuples = getattr(ent._, "candidates", [])
+            # Get candidate scores if available
+            candidate_scores = getattr(ent._, "candidate_scores", [])
             # Convert to Candidate objects for output
             candidates = tuples_to_candidates(candidates_tuples)
 
@@ -230,6 +232,20 @@ class NERPipeline:
 
             # Get context
             context = getattr(ent._, "context", None)
+
+            # Compute linking confidence:
+            # - If entity resolved: use the top candidate's score (if available)
+            # - If not resolved: None (indicates NIL / no match found in KB)
+            linking_confidence = None
+            if resolved_entity and candidate_scores:
+                # Find the score for the resolved entity
+                for i, (title, _) in enumerate(candidates_tuples):
+                    if title == resolved_entity.title and i < len(candidate_scores):
+                        linking_confidence = candidate_scores[i]
+                        break
+                # Fallback: use top score if we can't find exact match
+                if linking_confidence is None and candidate_scores:
+                    linking_confidence = candidate_scores[0]
 
             entity_dict = {
                 "text": ent.text,
@@ -242,13 +258,14 @@ class NERPipeline:
                 "entity_description": (
                     resolved_entity.description if resolved_entity else None
                 ),
+                "linking_confidence": linking_confidence,
                 "candidates": [
                     {
                         "entity_id": c.entity_id,
-                        "score": c.score,
+                        "score": candidate_scores[i] if i < len(candidate_scores) else None,
                         "description": c.description,
                     }
-                    for c in candidates
+                    for i, c in enumerate(candidates)
                 ],
             }
             entities.append(entity_dict)

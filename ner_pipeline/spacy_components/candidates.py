@@ -82,6 +82,8 @@ def _ensure_candidates_extension():
     """Ensure the candidates extension is registered on Span."""
     if not Span.has_extension("candidates"):
         Span.set_extension("candidates", default=[])
+    if not Span.has_extension("candidate_scores"):
+        Span.set_extension("candidate_scores", default=[])
 
 
 # ============================================================================
@@ -221,14 +223,17 @@ class LELABM25CandidatesComponent:
             k = min(self.top_k, len(self.entities))
             results = self.retriever.retrieve(query_tokens, k=k)
             candidates_docs = results.documents[0]
-            scores = results.scores[0] if hasattr(results, 'scores') else [None] * len(candidates_docs)
+            scores = results.scores[0] if hasattr(results, 'scores') else [0.0] * len(candidates_docs)
 
             # Store as LELA format: List[Tuple[str, str]] (title, description)
             candidates = []
+            candidate_scores = []
             for j, record in enumerate(candidates_docs):
                 candidates.append((record["title"], record["description"]))
+                candidate_scores.append(float(scores[j]) if j < len(scores) else 0.0)
 
             ent._.candidates = candidates
+            ent._.candidate_scores = candidate_scores
             logger.debug(f"Retrieved {len(candidates)} candidates for '{ent.text}'")
 
         # Clear progress callback after processing
@@ -393,11 +398,14 @@ class LELADenseCandidatesComponent:
 
             # Build candidates as LELA format
             candidates = []
+            candidate_scores = []
             for score, idx in zip(scores[0], indices[0]):
                 entity = self.entities[int(idx)]
                 candidates.append((entity.title, entity.description or ""))
+                candidate_scores.append(float(score))
 
             ent._.candidates = candidates
+            ent._.candidate_scores = candidate_scores
             logger.debug(f"Dense-retrieved {len(candidates)} candidates for '{ent.text}'")
 
         # Clear progress callback after processing
@@ -483,11 +491,15 @@ class FuzzyCandidatesComponent:
 
             # Build candidates as LELA format
             candidates = []
+            candidate_scores = []
             for title, score, idx in results:
                 entity = self.entities[idx]
                 candidates.append((entity.title, entity.description or ""))
+                # Normalize fuzzy score from 0-100 to 0-1
+                candidate_scores.append(float(score) / 100.0)
 
             ent._.candidates = candidates
+            ent._.candidate_scores = candidate_scores
             logger.debug(f"Fuzzy-matched {len(candidates)} candidates for '{ent.text}'")
 
         # Clear progress callback after processing
@@ -590,11 +602,14 @@ class BM25CandidatesComponent:
 
             # Build candidates
             candidates = []
+            candidate_scores = []
             for idx in top_indices:
                 entity = self.entities[idx]
                 candidates.append((entity.title, entity.description or ""))
+                candidate_scores.append(float(scores[idx]))
 
             ent._.candidates = candidates
+            ent._.candidate_scores = candidate_scores
             logger.debug(f"BM25 retrieved {len(candidates)} candidates for '{ent.text}'")
 
         # Clear progress callback after processing
