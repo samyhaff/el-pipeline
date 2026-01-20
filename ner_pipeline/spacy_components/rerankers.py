@@ -14,8 +14,6 @@ import numpy as np
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 
-ProgressCallback = Callable[[float, str], None]
-
 from ner_pipeline.lela.config import (
     RERANKER_TOP_K,
     DEFAULT_EMBEDDER_MODEL,
@@ -24,16 +22,10 @@ from ner_pipeline.lela.config import (
     SPAN_CLOSE,
 )
 from ner_pipeline.lela.llm_pool import embedder_pool
+from ner_pipeline.utils import ensure_candidates_extension
+from ner_pipeline.types import ProgressCallback
 
 logger = logging.getLogger(__name__)
-
-
-def _ensure_candidates_extension():
-    """Ensure the candidates extension is registered on Span."""
-    if not Span.has_extension("candidates"):
-        Span.set_extension("candidates", default=[])
-    if not Span.has_extension("candidate_scores"):
-        Span.set_extension("candidate_scores", default=[])
 
 
 # ============================================================================
@@ -89,7 +81,7 @@ class LELAEmbedderRerankerComponent:
         self.base_url = base_url
         self.port = port
 
-        _ensure_candidates_extension()
+        ensure_candidates_extension()
         
         # Optional progress callback for fine-grained progress reporting
         self.progress_callback: Optional[ProgressCallback] = None
@@ -218,7 +210,7 @@ class CrossEncoderRerankerComponent:
         self.model_name = model_name
         self.top_k = top_k
 
-        _ensure_candidates_extension()
+        ensure_candidates_extension()
         
         # Optional progress callback for fine-grained progress reporting
         self.progress_callback: Optional[ProgressCallback] = None
@@ -304,7 +296,7 @@ class NoOpRerankerComponent:
 
     def __init__(self, nlp: Language):
         self.nlp = nlp
-        _ensure_candidates_extension()
+        ensure_candidates_extension()
 
     def __call__(self, doc: Doc) -> Doc:
         """Pass through - no reranking."""

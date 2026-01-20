@@ -1,5 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
+# Type alias for progress callbacks used throughout the pipeline
+ProgressCallback = Callable[[float, str], None]
 
 
 @dataclass

@@ -280,6 +280,7 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 
 from ner_pipeline.context import extract_context
+from ner_pipeline.utils import filter_spans, ensure_context_extension
 
 
 @Language.factory(
@@ -311,9 +312,8 @@ class EmailNERComponent:
             r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
         )
 
-        # Register extension if not exists
-        if not Span.has_extension("context"):
-            Span.set_extension("context", default=None)
+        # Register extension using shared utility
+        ensure_context_extension()
 
     def __call__(self, doc: Doc) -> Doc:
         """Process document and add email entities."""
@@ -338,26 +338,9 @@ class EmailNERComponent:
 
             spans.append(new_span)
 
-        # Set entities (handles overlap filtering)
-        doc.ents = self._filter_spans(spans)
+        # Set entities using shared utility (handles overlap filtering)
+        doc.ents = filter_spans(spans)
         return doc
-
-    def _filter_spans(self, spans: List[Span]) -> List[Span]:
-        """Filter overlapping spans, keeping the longest."""
-        if not spans:
-            return []
-
-        sorted_spans = sorted(spans, key=lambda s: (-(s.end - s.start), s.start))
-        result = []
-        seen_tokens = set()
-
-        for span in sorted_spans:
-            span_tokens = set(range(span.start, span.end))
-            if not span_tokens & seen_tokens:
-                result.append(span)
-                seen_tokens.update(span_tokens)
-
-        return sorted(result, key=lambda s: s.start)
 ```
 
 ### Example: Custom Candidate Generator
@@ -369,6 +352,7 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 
 from ner_pipeline.knowledge_bases.base import KnowledgeBase
+from ner_pipeline.utils import ensure_candidates_extension
 
 
 @Language.factory(
@@ -399,11 +383,8 @@ class ExactMatchCandidatesComponent:
         self.kb = None
         self._entity_titles = {}
 
-        # Register extensions
-        if not Span.has_extension("candidates"):
-            Span.set_extension("candidates", default=[])
-        if not Span.has_extension("candidate_scores"):
-            Span.set_extension("candidate_scores", default=[])
+        # Register extensions using shared utility
+        ensure_candidates_extension()
 
     def initialize(self, kb: KnowledgeBase):
         """Initialize with knowledge base."""
@@ -453,6 +434,7 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 
 from ner_pipeline.knowledge_bases.base import KnowledgeBase
+from ner_pipeline.utils import ensure_candidates_extension, ensure_resolved_entity_extension
 
 
 @Language.factory(
@@ -476,8 +458,9 @@ class RandomDisambiguatorComponent:
         self.nlp = nlp
         self.kb = None
 
-        if not Span.has_extension("resolved_entity"):
-            Span.set_extension("resolved_entity", default=None)
+        # Register extensions using shared utilities
+        ensure_candidates_extension()
+        ensure_resolved_entity_extension()
 
     def initialize(self, kb: KnowledgeBase):
         """Initialize with knowledge base."""
@@ -631,7 +614,27 @@ def _get_model():
     return _heavy_model
 ```
 
-### 2. Register Extensions Safely
+### 2. Use Shared Utilities for Extensions
+
+Use the shared utility functions in `ner_pipeline.utils` to register extensions:
+
+```python
+from ner_pipeline.utils import (
+    filter_spans,                    # For NER components
+    ensure_context_extension,        # For NER: ent._.context
+    ensure_candidates_extension,     # For candidates: ent._.candidates, ent._.candidate_scores
+    ensure_resolved_entity_extension # For disambiguators: ent._.resolved_entity
+)
+
+# In your component's __init__:
+ensure_context_extension()
+ensure_candidates_extension()
+
+# In your NER component's __call__:
+doc.ents = filter_spans(spans)
+```
+
+For custom extensions not covered by the shared utilities:
 
 ```python
 if not Span.has_extension("my_extension"):

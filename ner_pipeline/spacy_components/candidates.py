@@ -15,8 +15,6 @@ import numpy as np
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 
-ProgressCallback = Callable[[float, str], None]
-
 from ner_pipeline.knowledge_bases.base import KnowledgeBase
 from ner_pipeline.lela.config import (
     CANDIDATES_TOP_K,
@@ -24,6 +22,8 @@ from ner_pipeline.lela.config import (
     RETRIEVER_TASK,
 )
 from ner_pipeline.lela.llm_pool import embedder_pool
+from ner_pipeline.utils import ensure_candidates_extension
+from ner_pipeline.types import ProgressCallback
 
 logger = logging.getLogger(__name__)
 
@@ -78,14 +78,6 @@ def _get_faiss():
     return _faiss
 
 
-def _ensure_candidates_extension():
-    """Ensure the candidates extension is registered on Span."""
-    if not Span.has_extension("candidates"):
-        Span.set_extension("candidates", default=[])
-    if not Span.has_extension("candidate_scores"):
-        Span.set_extension("candidate_scores", default=[])
-
-
 # ============================================================================
 # LELA BM25 Candidates Component
 # ============================================================================
@@ -134,7 +126,7 @@ class LELABM25CandidatesComponent:
         self.use_context = use_context
         self.stemmer_language = stemmer_language
 
-        _ensure_candidates_extension()
+        ensure_candidates_extension()
 
         # Initialize lazily - will be built when KB is set
         self.kb = None
@@ -300,7 +292,7 @@ class LELADenseCandidatesComponent:
         self.port = port
         self.use_context = use_context
 
-        _ensure_candidates_extension()
+        ensure_candidates_extension()
 
         # Initialize lazily
         self.kb = None
@@ -448,7 +440,7 @@ class FuzzyCandidatesComponent:
         self.nlp = nlp
         self.top_k = top_k
 
-        _ensure_candidates_extension()
+        ensure_candidates_extension()
 
         # Initialize lazily
         self.kb = None
@@ -542,7 +534,7 @@ class BM25CandidatesComponent:
         self.nlp = nlp
         self.top_k = top_k
 
-        _ensure_candidates_extension()
+        ensure_candidates_extension()
 
         # Initialize lazily
         self.kb = None

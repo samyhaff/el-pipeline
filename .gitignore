@@ -34,3 +34,6 @@ data/*
 
 # AI Tools
 .claude/
+
+# Data artifacts
+results.jsonl

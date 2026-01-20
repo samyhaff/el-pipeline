@@ -83,7 +83,7 @@ class TestLELAvLLMDisambiguatorComponent:
         mock_output.text = '"answer": 1'
         mock_response = MagicMock()
         mock_response.outputs = [mock_output]
-        mock_llm.chat.return_value = [mock_response]
+        mock_llm.generate.return_value = [mock_response]
 
         from ner_pipeline.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
         component = LELAvLLMDisambiguatorComponent(nlp=nlp)
@@ -160,7 +160,7 @@ class TestLELAvLLMDisambiguatorComponent:
         mock_output.text = '"answer": 0'
         mock_response = MagicMock()
         mock_response.outputs = [mock_output]
-        mock_llm.chat.return_value = [mock_response]
+        mock_llm.generate.return_value = [mock_response]
 
         from ner_pipeline.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
         component = LELAvLLMDisambiguatorComponent(nlp=nlp, add_none_candidate=True)
@@ -190,7 +190,7 @@ class TestLELAvLLMDisambiguatorComponent:
         mock_output.text = '"answer": 2'
         mock_response = MagicMock()
         mock_response.outputs = [mock_output]
-        mock_llm.chat.return_value = [mock_response]
+        mock_llm.generate.return_value = [mock_response]
 
         from ner_pipeline.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
         component = LELAvLLMDisambiguatorComponent(nlp=nlp)
@@ -221,7 +221,7 @@ class TestLELAvLLMDisambiguatorComponent:
         mock_output.text = '"answer": 99'
         mock_response = MagicMock()
         mock_response.outputs = [mock_output]
-        mock_llm.chat.return_value = [mock_response]
+        mock_llm.generate.return_value = [mock_response]
 
         from ner_pipeline.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
         component = LELAvLLMDisambiguatorComponent(nlp=nlp)
@@ -251,7 +251,7 @@ class TestLELAvLLMDisambiguatorComponent:
         mock_output.text = 'I think the answer is Barack Obama'
         mock_response = MagicMock()
         mock_response.outputs = [mock_output]
-        mock_llm.chat.return_value = [mock_response]
+        mock_llm.generate.return_value = [mock_response]
 
         from ner_pipeline.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
         component = LELAvLLMDisambiguatorComponent(nlp=nlp)
@@ -276,7 +276,7 @@ class TestLELAvLLMDisambiguatorComponent:
 
         mock_llm = MagicMock()
         mock_get_instance.return_value = mock_llm
-        mock_llm.chat.side_effect = Exception("LLM error")
+        mock_llm.generate.side_effect = Exception("LLM error")
 
         from ner_pipeline.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
         component = LELAvLLMDisambiguatorComponent(nlp=nlp)

@@ -5,7 +5,7 @@ Provides functions to extract surrounding context for mentions,
 which improves disambiguation accuracy.
 """
 import re
-from typing import Optional, Tuple
+from typing import Optional
 
 
 def extract_sentence_context(

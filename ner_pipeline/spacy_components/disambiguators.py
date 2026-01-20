@@ -15,8 +15,6 @@ from typing import Callable, List, Optional, Tuple
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 
-ProgressCallback = Callable[[float, str], None]
-
 from ner_pipeline.knowledge_bases.base import KnowledgeBase
 from ner_pipeline.lela.config import (
     DEFAULT_LLM_MODEL,
@@ -31,6 +29,8 @@ from ner_pipeline.lela.prompts import (
     DEFAULT_SYSTEM_PROMPT,
 )
 from ner_pipeline.lela.llm_pool import get_vllm_instance
+from ner_pipeline.utils import ensure_candidates_extension, ensure_resolved_entity_extension
+from ner_pipeline.types import ProgressCallback
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,8 @@ def _get_vllm():
 
 def _ensure_extensions():
     """Ensure required extensions are registered on Span."""
-    if not Span.has_extension("candidates"):
-        Span.set_extension("candidates", default=[])
-    if not Span.has_extension("resolved_entity"):
-        Span.set_extension("resolved_entity", default=None)
+    ensure_candidates_extension()
+    ensure_resolved_entity_extension()
 
 
 # ============================================================================

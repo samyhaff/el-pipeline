@@ -16,16 +16,22 @@ class MockFile:
         self.name = path
 
 
+class MockProgress:
+    """Mock progress object for testing."""
+    def __call__(self, progress: float, desc: str = ""):
+        pass
+
+
 def test_basic_pipeline():
     """Test basic pipeline with sample data."""
     print("Testing basic pipeline with sample files...")
-    
+
     kb_file = MockFile("data/test/sample_kb.jsonl")
-    
+
     text_input = "Albert Einstein was born in Germany. Marie Curie was a pioneering scientist."
-    
+
     try:
-        highlighted, result = run_pipeline(
+        highlighted, stats, result = run_pipeline(
             text_input=text_input,
             file_input=None,
             kb_file=kb_file,
@@ -34,24 +40,30 @@ def test_basic_pipeline():
             spacy_model="en_core_web_sm",
             gliner_model="urchade/gliner_large",
             gliner_labels="",
+            gliner_threshold=0.5,
             simple_min_len=3,
             cand_type="fuzzy",
             cand_top_k=10,
+            cand_use_context=True,
             reranker_type="none",
+            reranker_top_k=10,
             disambig_type="first",
+            kb_type="custom",
+            progress=MockProgress(),
         )
-        
-        print("\n✅ Pipeline executed successfully!")
+
+        print("\n[OK] Pipeline executed successfully!")
         print(f"\nFound {len(result['entities'])} entities:")
         for entity in result['entities'][:5]:
-            print(f"  - {entity['text']} → {entity.get('entity_title', 'None')}")
-        
+            print(f"  - {entity['text']} -> {entity.get('entity_title', 'None')}")
+
         print(f"\nHighlighted text segments: {len(highlighted)}")
-        
+        print(f"\nStats:\n{stats}")
+
         return True
-        
+
     except Exception as e:
-        print(f"\n❌ Pipeline failed: {str(e)}")
+        print(f"\n[FAIL] Pipeline failed: {str(e)}")
         import traceback
         traceback.print_exc()
         return False
@@ -60,7 +72,7 @@ def test_basic_pipeline():
 def test_format_highlighted():
     """Test the highlighted text formatting."""
     print("\nTesting highlighted text formatting...")
-    
+
     sample_result = {
         "text": "Albert Einstein was born in Germany.",
         "entities": [
@@ -80,14 +92,14 @@ def test_format_highlighted():
             }
         ]
     }
-    
+
     highlighted = format_highlighted_text(sample_result)
-    
-    print(f"✅ Formatted {len(highlighted)} segments")
+
+    print(f"[OK] Formatted {len(highlighted)} segments")
     for text, label in highlighted:
         if label:
             print(f"  - [{label}] {text}")
-    
+
     return True
 
 
@@ -95,18 +107,17 @@ if __name__ == "__main__":
     print("=" * 60)
     print("NER Pipeline Gradio App - Component Tests")
     print("=" * 60)
-    
+
     success = True
-    
+
     success = test_format_highlighted() and success
     success = test_basic_pipeline() and success
-    
+
     print("\n" + "=" * 60)
     if success:
-        print("✅ All tests passed!")
+        print("[OK] All tests passed!")
     else:
-        print("❌ Some tests failed")
+        print("[FAIL] Some tests failed")
     print("=" * 60)
-    
-    sys.exit(0 if success else 1)
 
+    sys.exit(0 if success else 1)

@@ -21,6 +21,7 @@ from ner_pipeline.lela.config import (
     DEFAULT_GLINER_MODEL,
     NER_LABELS,
 )
+from ner_pipeline.utils import filter_spans, ensure_context_extension
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +97,7 @@ class LELAGLiNERComponent:
         self.threshold = threshold
         self.context_mode = context_mode
 
-        # Register custom extension for context
-        if not Span.has_extension("context"):
-            Span.set_extension("context", default=None)
+        ensure_context_extension()
 
         GLiNER = _get_gliner()
         logger.info(f"Loading LELA GLiNER model: {model_name}")
@@ -182,30 +181,10 @@ class LELAGLiNERComponent:
             spans.append(new_span)
 
         # Filter overlapping spans (keep longest)
-        doc.ents = self._filter_spans(spans)
+        doc.ents = filter_spans(spans)
 
         logger.debug(f"Extracted {len(doc.ents)} entities from document ({len(text)} chars)")
         return doc
-
-    def _filter_spans(self, spans: List[Span]) -> List[Span]:
-        """Filter overlapping spans, keeping the longest."""
-        if not spans:
-            return []
-
-        # Sort by length (descending) then by start position
-        sorted_spans = sorted(spans, key=lambda s: (-(s.end - s.start), s.start))
-
-        result = []
-        seen_tokens = set()
-
-        for span in sorted_spans:
-            span_tokens = set(range(span.start, span.end))
-            if not span_tokens & seen_tokens:
-                result.append(span)
-                seen_tokens.update(span_tokens)
-
-        # Sort by start position for final result
-        return sorted(result, key=lambda s: s.start)
 
 
 # ============================================================================
@@ -250,8 +229,7 @@ class SimpleNERComponent:
         self.min_len = min_len
         self.context_mode = context_mode
 
-        if not Span.has_extension("context"):
-            Span.set_extension("context", default=None)
+        ensure_context_extension()
 
     def __call__(self, doc: Doc) -> Doc:
         """Process document and add entities."""
@@ -275,25 +253,8 @@ class SimpleNERComponent:
             new_span._.context = context
             spans.append(new_span)
 
-        doc.ents = self._filter_spans(spans)
+        doc.ents = filter_spans(spans)
         return doc
-
-    def _filter_spans(self, spans: List[Span]) -> List[Span]:
-        """Filter overlapping spans, keeping the longest."""
-        if not spans:
-            return []
-
-        sorted_spans = sorted(spans, key=lambda s: (-(s.end - s.start), s.start))
-        result = []
-        seen_tokens = set()
-
-        for span in sorted_spans:
-            span_tokens = set(range(span.start, span.end))
-            if not span_tokens & seen_tokens:
-                result.append(span)
-                seen_tokens.update(span_tokens)
-
-        return sorted(result, key=lambda s: s.start)
 
 
 # ============================================================================
@@ -348,8 +309,7 @@ class GLiNERComponent:
         self.threshold = threshold
         self.context_mode = context_mode
 
-        if not Span.has_extension("context"):
-            Span.set_extension("context", default=None)
+        ensure_context_extension()
 
         GLiNER = _get_gliner()
         logger.info(f"Loading GLiNER model: {model_name}")
@@ -382,25 +342,8 @@ class GLiNERComponent:
             new_span._.context = context
             spans.append(new_span)
 
-        doc.ents = self._filter_spans(spans)
+        doc.ents = filter_spans(spans)
         return doc
-
-    def _filter_spans(self, spans: List[Span]) -> List[Span]:
-        """Filter overlapping spans."""
-        if not spans:
-            return []
-
-        sorted_spans = sorted(spans, key=lambda s: (-(s.end - s.start), s.start))
-        result = []
-        seen_tokens = set()
-
-        for span in sorted_spans:
-            span_tokens = set(range(span.start, span.end))
-            if not span_tokens & seen_tokens:
-                result.append(span)
-                seen_tokens.update(span_tokens)
-
-        return sorted(result, key=lambda s: s.start)
 
 
 # ============================================================================
@@ -456,8 +399,7 @@ class TransformersNERComponent:
         self.aggregation_strategy = aggregation_strategy
         self.stride = stride
 
-        if not Span.has_extension("context"):
-            Span.set_extension("context", default=None)
+        ensure_context_extension()
 
         # Lazy import transformers
         try:
@@ -514,25 +456,8 @@ class TransformersNERComponent:
             new_span._.context = context
             spans.append(new_span)
 
-        doc.ents = self._filter_spans(spans)
+        doc.ents = filter_spans(spans)
         return doc
-
-    def _filter_spans(self, spans: List[Span]) -> List[Span]:
-        """Filter overlapping spans."""
-        if not spans:
-            return []
-
-        sorted_spans = sorted(spans, key=lambda s: (-(s.end - s.start), s.start))
-        result = []
-        seen_tokens = set()
-
-        for span in sorted_spans:
-            span_tokens = set(range(span.start, span.end))
-            if not span_tokens & seen_tokens:
-                result.append(span)
-                seen_tokens.update(span_tokens)
-
-        return sorted(result, key=lambda s: s.start)
 
 
 # ============================================================================
@@ -547,8 +472,7 @@ def ner_filter_component(doc: Doc) -> Doc:
     Adds context extension to existing entities from spaCy's NER.
     Use this after spaCy's built-in 'ner' component.
     """
-    if not Span.has_extension("context"):
-        Span.set_extension("context", default=None)
+    ensure_context_extension()
 
     text = doc.text
     for ent in doc.ents:

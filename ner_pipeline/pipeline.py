@@ -16,8 +16,6 @@ import spacy
 from spacy.language import Language
 from spacy.tokens import Doc
 
-ProgressCallback = Callable[[float, str], None]
-
 # Import spacy_components to register factories
 from ner_pipeline import spacy_components  # noqa: F401
 
@@ -30,7 +28,7 @@ from .registry import (
     knowledge_bases,
     loaders,
 )
-from .types import Document, tuples_to_candidates
+from .types import Document, ProgressCallback, tuples_to_candidates
 
 
 # Component name mapping from config names to spaCy factory names
