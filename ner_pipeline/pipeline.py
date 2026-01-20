@@ -83,14 +83,12 @@ class NERPipeline:
             if progress_callback:
                 progress_callback(progress, desc)
 
-        # Initialize knowledge base (kept as custom registry)
         report(0.0, "Loading knowledge base...")
         self.kb = None
         if config.knowledge_base:
             kb_factory = knowledge_bases.get(config.knowledge_base.name)
             self.kb = kb_factory(**config.knowledge_base.params)
 
-        # Initialize loader (kept as custom registry)
         report(0.15, "Initializing document loader...")
         loader_factory = loaders.get(config.loader.name)
         self.loader = loader_factory(**config.loader.params)
