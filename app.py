@@ -127,60 +127,222 @@ def get_label_color(label: str) -> str:
     return ENTITY_COLORS[idx]
 
 
-def highlighted_to_html(highlighted: List[Tuple[str, Optional[str]]], color_map: Dict[str, str]) -> str:
-    """Convert highlighted text data to HTML with inline styles.
+def highlighted_to_html(highlighted: List[Tuple[str, Optional[str], Optional[Dict]]], color_map: Dict[str, str]) -> str:
+    """Convert highlighted text data to HTML with inline styles, interactive hover, and popups.
 
     This bypasses Gradio's buggy HighlightedText component.
+    When hovering a legend item, only entities of that type are highlighted; others turn gray.
+    When hovering an entity, a popup shows detailed information.
     """
     import html
+    import hashlib
+    import uuid
+    import json
 
+    def label_to_class(label: str) -> str:
+        """Convert label to a valid CSS class name."""
+        return "ent-" + hashlib.md5(label.encode()).hexdigest()[:8]
+
+    def escape_js_string(s: str) -> str:
+        """Escape a string for use in JavaScript within HTML attributes."""
+        if s is None:
+            return ""
+        s = str(s)
+        # Escape backslashes first, then other special chars
+        s = s.replace("\\", "\\\\")
+        s = s.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+        s = html.escape(s)
+        s = s.replace("'", "\\'").replace('"', "&quot;")
+        return s
+
+    # Generate unique container ID for this render
+    container_id = f"ner-output-{uuid.uuid4().hex[:8]}"
+    popup_id = f"popup-{container_id}"
+
+    # Collect entity info by label for legend popups (first instance + count)
+    label_entity_info = {}  # label -> entity_info (first instance)
+    label_counts = {}  # label -> count of occurrences
+
+    # Build text with entity marks
     parts = []
-    for text, label in highlighted:
+    for item in highlighted:
+        text, label = item[0], item[1]
+        entity_info = item[2] if len(item) > 2 else None
+
         escaped_text = html.escape(text)
         if label is None:
             parts.append(escaped_text)
         else:
             color = color_map.get(label, "#808080")
-            # Create a styled span for the entity
+            css_class = label_to_class(label)
+
+            # Track count and store first entity info for each label (for legend popup)
+            label_counts[label] = label_counts.get(label, 0) + 1
+            if label not in label_entity_info and entity_info:
+                label_entity_info[label] = entity_info
+
+            # Build popup content for this entity
+            popup_lines = []
+            if entity_info:
+                if entity_info.get("kb_title"):
+                    popup_lines.append(f"<strong>{escape_js_string(entity_info['kb_title'])}</strong>")
+                if entity_info.get("kb_id"):
+                    popup_lines.append(f"<em>ID: {escape_js_string(entity_info['kb_id'])}</em>")
+                if entity_info.get("type"):
+                    popup_lines.append(f"Type: {escape_js_string(entity_info['type'])}")
+                if entity_info.get("mention") and entity_info.get("mention") != entity_info.get("kb_title"):
+                    popup_lines.append(f"Mention: &quot;{escape_js_string(entity_info['mention'])}&quot;")
+                if entity_info.get("confidence_normalized") is not None:
+                    conf_pct = entity_info['confidence_normalized'] * 100
+                    popup_lines.append(f"Confidence: {conf_pct:.1f}%")
+                if entity_info.get("kb_description"):
+                    desc = entity_info['kb_description']
+                    if len(desc) > 150:
+                        desc = desc[:150] + "..."
+                    popup_lines.append(f"<div style=&quot;margin-top:0.3em;font-size:0.9em;color:#666;&quot;>{escape_js_string(desc)}</div>")
+
+            popup_content = "<br>".join(popup_lines) if popup_lines else escape_js_string(label)
+
+            # JavaScript for showing/hiding popup (absolute positioning relative to container)
+            # Account for container scroll position and use viewport for bounds checking
+            show_popup_js = (
+                f"var p=document.getElementById('{popup_id}');"
+                f"p.innerHTML='{popup_content}';"
+                f"var cont=document.getElementById('{container_id}');"
+                f"var r=this.getBoundingClientRect();"
+                f"var c=cont.getBoundingClientRect();"
+                f"var left=r.left-c.left+cont.scrollLeft;"
+                f"var top=r.bottom-c.top+cont.scrollTop+5;"
+                f"p.style.left=left+'px';p.style.top=top+'px';"
+                f"p.style.display='block';"
+            )
+            hide_popup_js = f"document.getElementById('{popup_id}').style.display='none';"
+
             parts.append(
-                f'<mark style="background-color: {color}; padding: 0.1em 0.2em; '
-                f'border-radius: 0.2em; margin: 0 0.1em;" '
-                f'title="{html.escape(label)}">{escaped_text}</mark>'
+                f'<mark class="entity-mark {css_class}" '
+                f'data-color="{color}" '
+                f'style="background-color: {color}; padding: 0.1em 0.2em; '
+                f'border-radius: 0.2em; margin: 0 0.1em; cursor: pointer; '
+                f'transition: background-color 0.2s ease, opacity 0.2s ease;" '
+                f'onmouseenter="{show_popup_js}" '
+                f'onmouseleave="{hide_popup_js}">'
+                f'{escaped_text}</mark>'
             )
 
-    # Build legend
+    # JavaScript functions for legend hover (highlight/dim entities)
+    hover_in_js = (
+        "var c=document.getElementById('{cid}');"
+        "c.querySelectorAll('.entity-mark').forEach(function(m){{"
+        "if(m.classList.contains('{cls}')){{m.style.opacity='1';}}"
+        "else{{m.style.backgroundColor='#E5E7EB';m.style.opacity='0.6';}}"
+        "}});"
+    )
+    hover_out_js = (
+        "var c=document.getElementById('{cid}');"
+        "c.querySelectorAll('.entity-mark').forEach(function(m){{"
+        "m.style.backgroundColor=m.getAttribute('data-color');"
+        "m.style.opacity='1';"
+        "}});"
+    )
+
+    # Build legend with inline hover handlers and popups
     legend_parts = []
     seen_labels = set()
-    for _, label in highlighted:
+    for item in highlighted:
+        label = item[1]
         if label and label not in seen_labels:
             seen_labels.add(label)
             color = color_map.get(label, "#808080")
+            css_class = label_to_class(label)
+            enter_js = hover_in_js.format(cid=container_id, cls=css_class)
+            leave_js = hover_out_js.format(cid=container_id)
+
+            # Build popup content for legend item (summary info, no instance-specific confidence)
+            entity_info = label_entity_info.get(label)
+            count = label_counts.get(label, 1)
+            popup_lines = []
+            if entity_info:
+                if entity_info.get("kb_title"):
+                    popup_lines.append(f"<strong>{escape_js_string(entity_info['kb_title'])}</strong>")
+                if entity_info.get("kb_id"):
+                    popup_lines.append(f"<em>ID: {escape_js_string(entity_info['kb_id'])}</em>")
+                if entity_info.get("type"):
+                    popup_lines.append(f"Type: {escape_js_string(entity_info['type'])}")
+                # Show occurrence count instead of instance-specific confidence
+                popup_lines.append(f"Mentions: {count}")
+                if entity_info.get("kb_description"):
+                    desc = entity_info['kb_description']
+                    if len(desc) > 150:
+                        desc = desc[:150] + "..."
+                    popup_lines.append(f"<div style=&quot;margin-top:0.3em;font-size:0.9em;color:#666;&quot;>{escape_js_string(desc)}</div>")
+
+            popup_content = "<br>".join(popup_lines) if popup_lines else escape_js_string(label)
+
+            show_popup_js = (
+                f"var p=document.getElementById('{popup_id}');"
+                f"p.innerHTML='{popup_content}';"
+                f"var cont=document.getElementById('{container_id}');"
+                f"var r=this.getBoundingClientRect();"
+                f"var c=cont.getBoundingClientRect();"
+                f"var left=r.left-c.left+cont.scrollLeft;"
+                f"var top=r.bottom-c.top+cont.scrollTop+5;"
+                f"p.style.left=left+'px';p.style.top=top+'px';"
+                f"p.style.display='block';"
+            )
+            hide_popup_js = f"document.getElementById('{popup_id}').style.display='none';"
+
+            # Combine highlight JS with popup JS
+            combined_enter = enter_js + show_popup_js
+            combined_leave = leave_js + hide_popup_js
+
             legend_parts.append(
-                f'<span style="display: inline-block; margin-right: 1em;">'
+                f'<span class="legend-item" '
+                f'style="display: inline-block; margin-right: 1em; cursor: pointer;" '
+                f'onmouseenter="{combined_enter}" '
+                f'onmouseleave="{combined_leave}">'
                 f'<span style="background-color: {color}; padding: 0.1em 0.3em; '
                 f'border-radius: 0.2em; font-size: 0.85em;">{html.escape(label)}</span></span>'
             )
 
-    legend_html = '<div style="margin-bottom: 0.5em; line-height: 1.8;">' + ''.join(legend_parts) + '</div>' if legend_parts else ''
-    text_html = '<div style="line-height: 1.6; white-space: pre-wrap;">' + ''.join(parts) + '</div>'
+    legend_html = f'<div class="entity-legend" style="margin-bottom: 0.5em; line-height: 1.8;">{"".join(legend_parts)}</div>' if legend_parts else ''
+    text_html = f'<div class="entity-text" style="line-height: 1.6; white-space: pre-wrap;">{"".join(parts)}</div>'
 
-    return legend_html + text_html
+    # Popup div (hidden by default, absolute positioning relative to container)
+    popup_html = (
+        f'<div id="{popup_id}" style="'
+        f'display: none; '
+        f'position: absolute; '
+        f'background: white; '
+        f'border: 1px solid #ccc; '
+        f'border-radius: 6px; '
+        f'padding: 0.5em 0.75em; '
+        f'box-shadow: 0 2px 8px rgba(0,0,0,0.15); '
+        f'max-width: 350px; '
+        f'z-index: 1000; '
+        f'font-size: 0.9em; '
+        f'line-height: 1.4; '
+        f'pointer-events: none;'
+        f'"></div>'
+    )
+
+    return f'<div id="{container_id}" class="highlighted-container" style="position: relative;">{legend_html}{text_html}{popup_html}</div>'
 
 
 def format_highlighted_text_with_threshold(
     result: Dict,
     threshold: float = 0.0,
-) -> Tuple[List[Tuple[str, Optional[str]]], Dict[str, str]]:
+) -> Tuple[List[Tuple[str, Optional[str], Optional[Dict]]], Dict[str, str]]:
     """Convert pipeline result to highlighted format with confidence-based coloring.
 
     Entities below the threshold are shown in gray.
     Returns (highlighted_data, color_map) for use with highlighted_to_html().
+    Each highlighted item is (text, label, entity_info) where entity_info contains details for popup.
     """
     text = result["text"]
     entities = result["entities"]
 
     if not entities:
-        return [(text, None)], {}
+        return [(text, None, None)], {}
 
     # Process entities: build labels and track max confidence per label
     entity_data = []  # (entity, label, conf)
@@ -228,19 +390,30 @@ def format_highlighted_text_with_threshold(
     # Sort by position for text reconstruction
     entity_data.sort(key=lambda x: x[0]["start"])
 
-    # Build highlighted text
+    # Build highlighted text with entity info for popups
     highlighted = []
     last_end = 0
 
-    for entity, label, _ in entity_data:
+    for entity, label, conf in entity_data:
         if entity["start"] > last_end:
-            highlighted.append((text[last_end:entity["start"]], None))
+            highlighted.append((text[last_end:entity["start"]], None, None))
 
-        highlighted.append((entity["text"], label))
+        # Build entity info dict for popup
+        entity_info = {
+            "mention": entity["text"],
+            "type": entity.get("label", "ENT"),
+            "kb_id": entity.get("entity_id"),
+            "kb_title": entity.get("entity_title"),
+            "kb_description": entity.get("entity_description"),
+            "confidence": entity.get("linking_confidence"),
+            "confidence_normalized": conf,
+        }
+
+        highlighted.append((entity["text"], label, entity_info))
         last_end = entity["end"]
 
     if last_end < len(text):
-        highlighted.append((text[last_end:], None))
+        highlighted.append((text[last_end:], None, None))
 
     return highlighted, color_map
 
@@ -284,8 +457,11 @@ def compute_linking_stats(result: Dict, threshold: float = 0.0) -> str:
     return stats
 
 
-def format_error_output(error_title: str, error_message: str) -> Tuple[List[Tuple[str, Optional[str]]], str, Dict]:
-    """Format an error for display in the output components."""
+def format_error_output(error_title: str, error_message: str) -> Tuple[str, str, Dict]:
+    """Format an error for display in the output components.
+
+    Returns (html_output, stats, result) for consistency with run_pipeline.
+    """
     import traceback
 
     # Get full traceback if available
@@ -295,11 +471,17 @@ def format_error_output(error_title: str, error_message: str) -> Tuple[List[Tupl
     else:
         full_error = error_message
 
-    highlighted = [(f"Error: {error_title}", "ERROR")]
+    # Create HTML error display
+    html_output = (
+        f'<div style="color: {ERROR_COLOR}; padding: 1em; '
+        f'border: 1px solid {ERROR_COLOR}; border-radius: 6px; '
+        f'background-color: #FEF2F2;">'
+        f'<strong>Error: {error_title}</strong></div>'
+    )
     stats = f"**Error**\n\n{full_error}"
     result = {"error": error_title, "details": error_message}
 
-    return highlighted, stats, result
+    return html_output, stats, result
 
 
 def run_pipeline(
@@ -324,8 +506,11 @@ def run_pipeline(
     tournament_thinking: bool,
     kb_type: str,
     progress=gr.Progress(),
-) -> Tuple[List[Tuple[str, Optional[str]]], str, Dict]:
-    """Run the NER pipeline with selected configuration."""
+) -> Tuple[str, str, Dict]:
+    """Run the NER pipeline with selected configuration.
+
+    Returns (html_output, stats, result) where html_output is the rendered entity HTML.
+    """
     import sys
     logger = logging.getLogger(__name__)
     logger.info(f"=== run_pipeline ENTERED (run #{_run_counter}) ===")
@@ -561,7 +746,7 @@ def apply_confidence_filter(
     logger.info(f"apply_confidence_filter: got {len(highlighted)} segments, {len(color_map)} colors")
 
     # Validate that all labels in highlighted have a color
-    labels_in_text = set(label for _, label in highlighted if label is not None)
+    labels_in_text = set(item[1] for item in highlighted if item[1] is not None)
     labels_in_map = set(color_map.keys())
     missing_labels = labels_in_text - labels_in_map
     if missing_labels:
