@@ -85,17 +85,6 @@ def filter_entities_by_confidence(result: Dict, threshold: float) -> Dict:
     }
 
 
-def format_highlighted_text(result: Dict) -> List[Tuple[str, Optional[str]]]:
-    """Convert pipeline result to HighlightedText format.
-
-    Entities are shown with different labels based on linking status:
-    - Linked: "LABEL: Entity Title" (e.g., "PERSON: Albert Einstein")
-    - Unlinked: "LABEL [NOT IN KB]" (e.g., "PERSON [NOT IN KB]")
-    """
-    highlighted, _ = format_highlighted_text_with_threshold(result, threshold=0.0)
-    return highlighted
-
-
 GRAY_COLOR = "#D1D5DB"  # Tailwind gray-300 (light gray)
 
 # Color palette for consistent entity colors
@@ -182,10 +171,10 @@ def format_highlighted_text_with_threshold(
     result: Dict,
     threshold: float = 0.0,
 ) -> Tuple[List[Tuple[str, Optional[str]]], Dict[str, str]]:
-    """Convert pipeline result to HighlightedText format with confidence-based coloring.
+    """Convert pipeline result to highlighted format with confidence-based coloring.
 
     Entities below the threshold are shown in gray.
-    Returns (highlighted_data, color_map) for use with gr.HighlightedText.
+    Returns (highlighted_data, color_map) for use with highlighted_to_html().
     """
     text = result["text"]
     entities = result["entities"]
@@ -464,11 +453,14 @@ def run_pipeline(
     sys.stderr.flush()
     progress(0.9, desc="Formatting output...")
 
-    logger.info("Calling format_highlighted_text...")
+    logger.info("Calling format_highlighted_text_with_threshold...")
     sys.stderr.flush()
-    highlighted = format_highlighted_text(result)
-    logger.info(f"format_highlighted_text done, got {len(highlighted)} segments")
+    highlighted, color_map = format_highlighted_text_with_threshold(result, threshold=0.0)
+    logger.info(f"format_highlighted_text_with_threshold done, got {len(highlighted)} segments")
     sys.stderr.flush()
+
+    # Convert to HTML for the gr.HTML component
+    html_output = highlighted_to_html(highlighted, color_map)
 
     logger.info("Calling compute_linking_stats...")
     sys.stderr.flush()
@@ -493,7 +485,7 @@ def run_pipeline(
 
     logger.info(f"=== run_pipeline RETURNING (run #{_run_counter}, {len(result.get('entities', []))} entities) ===")
     sys.stderr.flush()
-    return highlighted, stats, result
+    return html_output, stats, result
 
 
 def update_ner_params(ner_choice: str):
@@ -547,7 +539,7 @@ def apply_confidence_filter(
         threshold: Confidence threshold from slider
 
     Returns:
-        Tuple of (gr.HighlightedText, stats, full_json)
+        Tuple of (html_output, stats, full_json)
     """
     import sys
     logger = logging.getLogger(__name__)
@@ -992,7 +984,6 @@ Test files are available in `data/test/`:
                 kb_type,
             ],
             outputs=[highlighted_output, stats_output, full_result_state],
-            # Removed show_progress_on to test if it's causing the freeze
         ).then(
             fn=apply_confidence_filter,
             inputs=[full_result_state, confidence_threshold],
