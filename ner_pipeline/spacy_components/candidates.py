@@ -9,6 +9,8 @@ Provides factories and components for candidate generation:
 """
 
 import logging
+import hashlib
+from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
@@ -251,6 +253,7 @@ class LELABM25CandidatesComponent:
         "top_k": CANDIDATES_TOP_K,
         "device": None,
         "use_context": True,
+        "cache_dir": None, # Add cache_dir to default_config
     },
 )
 def create_lela_dense_candidates_component(
@@ -260,6 +263,7 @@ def create_lela_dense_candidates_component(
     top_k: int,
     device: Optional[str],
     use_context: bool,
+    cache_dir: Optional[str], # Add cache_dir to factory signature
 ):
     """Factory for LELA dense candidates component."""
     return LELADenseCandidatesComponent(
@@ -268,7 +272,13 @@ def create_lela_dense_candidates_component(
         top_k=top_k,
         device=device,
         use_context=use_context,
+        cache_dir=cache_dir, # Pass cache_dir to component
     )
+
+
+import hashlib
+from pathlib import Path
+# ... (rest of imports)
 
 
 class LELADenseCandidatesComponent:
@@ -289,6 +299,7 @@ class LELADenseCandidatesComponent:
         top_k: int = CANDIDATES_TOP_K,
         device: Optional[str] = None,
         use_context: bool = True,
+        cache_dir: Optional[str] = None, # Accept cache_dir in init
     ):
         self.nlp = nlp
         self.model_name = model_name
@@ -305,9 +316,20 @@ class LELADenseCandidatesComponent:
         self.kb = None
         self.entities = None
         self.index = None
+        # Use provided cache_dir or default
+        self.cache_dir = Path(cache_dir) if cache_dir else Path("./.ner_cache")
 
         # Optional progress callback for fine-grained progress reporting
         self.progress_callback: Optional[ProgressCallback] = None
+    
+    def _get_cache_path(self, kb_path: str) -> Path:
+        """Generate a unique cache path for the FAISS index."""
+        kb_hash = hashlib.sha256(kb_path.encode()).hexdigest()[:16]
+        model_hash = hashlib.sha256(self.model_name.encode()).hexdigest()[:16]
+        device_hash = hashlib.sha256(str(self.device).encode()).hexdigest()[:8]
+        
+        index_name = f"faiss_index_{kb_hash}_{model_hash}_{device_hash}.faiss"
+        return self.cache_dir / index_name
 
     def initialize(self, kb: KnowledgeBase):
         """Initialize the component with a knowledge base."""
@@ -322,24 +344,87 @@ class LELADenseCandidatesComponent:
         if not self.entities:
             raise ValueError("Knowledge base is empty.")
 
-        # Build entity texts
-        entity_texts = [
-            f"{e.title} {e.description or ''}" for e in self.entities
-        ]
+        # Ensure cache directory exists
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = self._get_cache_path(kb.path) # Assuming KB has a 'path' attribute
 
-        logger.info(f"Building dense index over {len(self.entities)} entities")
+        if cache_path.exists():
+            logger.info(f"Loading FAISS index from cache: {cache_path}")
+            self.index = faiss.read_index(str(cache_path))
+            logger.info(f"FAISS index loaded from cache: {self.index.ntotal} vectors")
+        else:
+            # Build entity texts
+            entity_texts = [
+                f"{e.title} {e.description or ''}" for e in self.entities
+            ]
 
-        # Load model for embedding, then release after index is built
-        model = get_sentence_transformer_instance(self.model_name, self.device)
-        embeddings = model.encode(entity_texts, normalize_embeddings=True, convert_to_numpy=True)
-        release_sentence_transformer(self.model_name, self.device)
+            logger.info(f"Building dense index over {len(self.entities)} entities")
 
-        # Build FAISS index
-        dim = embeddings.shape[1]
-        self.index = faiss.IndexFlatIP(dim)
-        self.index.add(embeddings)
+            # Load model for embedding, then release after index is built
+            model = get_sentence_transformer_instance(self.model_name, self.device)
+            embeddings = model.encode(entity_texts, normalize_embeddings=True, convert_to_numpy=True)
+            release_sentence_transformer(self.model_name, self.device)
 
-        logger.info(f"Dense index built: {self.index.ntotal} vectors, dim={dim}")
+            # Build FAISS index
+            dim = embeddings.shape[1]
+            self.index = faiss.IndexFlatIP(dim)
+            self.index.add(embeddings)
+
+            logger.info(f"Dense index built: {self.index.ntotal} vectors, dim={dim}. Saving to {cache_path}")
+            faiss.write_index(self.index, str(cache_path))
+            logger.info("FAISS index saved to cache.")
+    
+    def _get_cache_path(self, kb_path: str) -> Path:
+        """Generate a unique cache path for the FAISS index."""
+        kb_hash = hashlib.sha256(kb_path.encode()).hexdigest()[:16]
+        model_hash = hashlib.sha256(self.model_name.encode()).hexdigest()[:16]
+        device_hash = hashlib.sha256(str(self.device).encode()).hexdigest()[:8]
+        
+        index_name = f"faiss_index_{kb_hash}_{model_hash}_{device_hash}.faiss"
+        return self.cache_dir / index_name
+
+    def initialize(self, kb: KnowledgeBase):
+        """Initialize the component with a knowledge base."""
+        if kb is None:
+            raise ValueError("LELA dense retrieval requires a knowledge base.")
+
+        self.kb = kb
+
+        faiss = _get_faiss()
+
+        self.entities = list(kb.all_entities())
+        if not self.entities:
+            raise ValueError("Knowledge base is empty.")
+
+        # Ensure cache directory exists
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = self._get_cache_path(kb.path) # Assuming KB has a 'path' attribute
+
+        if cache_path.exists():
+            logger.info(f"Loading FAISS index from cache: {cache_path}")
+            self.index = faiss.read_index(str(cache_path))
+            logger.info(f"FAISS index loaded from cache: {self.index.ntotal} vectors")
+        else:
+            # Build entity texts
+            entity_texts = [
+                f"{e.title} {e.description or ''}" for e in self.entities
+            ]
+
+            logger.info(f"Building dense index over {len(self.entities)} entities")
+
+            # Load model for embedding, then release after index is built
+            model = get_sentence_transformer_instance(self.model_name, self.device)
+            embeddings = model.encode(entity_texts, normalize_embeddings=True, convert_to_numpy=True)
+            release_sentence_transformer(self.model_name, self.device)
+
+            # Build FAISS index
+            dim = embeddings.shape[1]
+            self.index = faiss.IndexFlatIP(dim)
+            self.index.add(embeddings)
+
+            logger.info(f"Dense index built: {self.index.ntotal} vectors, dim={dim}. Saving to {cache_path}")
+            faiss.write_index(self.index, str(cache_path))
+            logger.info("FAISS index saved to cache.")
 
     def _embed_texts(self, texts: List[str], model) -> np.ndarray:
         """Embed texts using the SentenceTransformer model."""

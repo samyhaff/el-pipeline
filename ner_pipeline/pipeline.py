@@ -146,6 +146,8 @@ class NERPipeline:
         report(0.45, f"Loading candidate generator ({config.candidate_generator.name})...")
         cand_name = config.candidate_generator.name
         cand_params = dict(config.candidate_generator.params)
+        # Pass cache_dir to candidate component
+        cand_params["cache_dir"] = str(self.cache_dir)
         factory_name = CANDIDATES_COMPONENT_MAP.get(cand_name)
         if factory_name is None:
             raise ValueError(f"Unknown candidate generator: {cand_name}")
