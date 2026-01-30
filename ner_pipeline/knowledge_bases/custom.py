@@ -25,6 +25,7 @@ class CustomJSONLKnowledgeBase:
     """
 
     def __init__(self, path: str):
+        self.path = path  # Store path for caching
         self.entities: Dict[str, Entity] = {}  # Indexed by ID
         self.titles: List[str] = []
         with Path(path).open(encoding="utf-8") as f:
