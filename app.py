@@ -23,6 +23,7 @@ from ner_pipeline.memory import get_system_resources
 from ner_pipeline.lela.config import (
     AVAILABLE_LLM_MODELS as LLM_MODEL_CHOICES,
     AVAILABLE_EMBEDDING_MODELS as EMBEDDING_MODEL_CHOICES,
+    AVAILABLE_CROSS_ENCODER_MODELS as CROSS_ENCODER_MODEL_CHOICES,
 )
 
 DESCRIPTION = """
@@ -508,6 +509,7 @@ def run_pipeline(
     cand_use_context: bool,
     reranker_type: str,
     reranker_embedding_model: str,
+    reranker_cross_encoder_model: str,
     reranker_top_k: int,
     disambig_type: str,
     llm_model: str,
@@ -585,6 +587,8 @@ def run_pipeline(
         reranker_params["top_k"] = reranker_top_k
     if reranker_type == "lela_embedder":
         reranker_params["model_name"] = reranker_embedding_model
+    if reranker_type == "cross_encoder":
+        reranker_params["model_name"] = reranker_cross_encoder_model
 
     # Build disambiguator params
     disambig_params = {}
@@ -752,8 +756,9 @@ def update_cand_params(cand_choice: str):
 
 def update_reranker_params(reranker_choice: str):
     """Show/hide reranker-specific parameters based on selection."""
+    show_cross_encoder_model = reranker_choice == "cross_encoder"
     show_embedding_model = reranker_choice == "lela_embedder"
-    return gr.update(visible=show_embedding_model)
+    return gr.update(visible=show_cross_encoder_model), gr.update(visible=show_embedding_model)
 
 
 def update_disambig_params(disambig_choice: str):
@@ -1084,6 +1089,14 @@ if __name__ == "__main__":
                             label="Reranker",
                             container=False,
                         )
+                        # Cross-encoder model selection
+                        cross_encoder_model_choices = [(m[1], m[0]) for m in CROSS_ENCODER_MODEL_CHOICES]
+                        reranker_cross_encoder_model = gr.Dropdown(
+                            choices=cross_encoder_model_choices,
+                            value="tomaarsen/Qwen3-Reranker-4B-seq-cls",
+                            label="Cross-Encoder Model",
+                            visible=False,
+                        )
                         # Embedding model selection for embedder reranker
                         reranker_embedding_model = gr.Dropdown(
                             choices=embedding_model_choices,
@@ -1293,7 +1306,7 @@ Test files are available in `data/test/`:
         reranker_type.change(
             fn=update_reranker_params,
             inputs=[reranker_type],
-            outputs=[reranker_embedding_model],
+            outputs=[reranker_cross_encoder_model, reranker_embedding_model],
         )
 
         disambig_type.change(
@@ -1343,6 +1356,7 @@ Test files are available in `data/test/`:
                 cand_use_context,
                 reranker_type,
                 reranker_embedding_model,
+                reranker_cross_encoder_model,
                 reranker_top_k,
                 disambig_type,
                 llm_model,

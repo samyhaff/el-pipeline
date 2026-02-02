@@ -26,6 +26,13 @@ AVAILABLE_EMBEDDING_MODELS = [
     ("Qwen/Qwen3-Embedding-4B", "Qwen3-Embed-4B (~9GB)", 9.0),
 ]
 
+# Available cross-encoder models for reranking
+AVAILABLE_CROSS_ENCODER_MODELS = [
+    ("cross-encoder/ms-marco-TinyBERT-L-2-v2", "TinyBERT (~0.1GB)", 0.1),
+    ("tomaarsen/Qwen3-Reranker-4B-seq-cls", "Qwen3-Reranker-4B (~9GB)", 9.0),
+    ("tomaarsen/Qwen3-Reranker-0.6B-seq-cls", "Qwen3-Reranker-0.6B (~2GB)", 2.0),
+]
+
 # Retrieval settings
 CANDIDATES_TOP_K = 64
 RERANKER_TOP_K = 10
