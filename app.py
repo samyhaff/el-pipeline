@@ -73,7 +73,7 @@ def get_available_components() -> Dict[str, List[str]]:
     return {
         "loaders": ["text", "pdf", "docx", "html", "json", "jsonl"],
         "ner": ["simple", "spacy", "gliner"],
-        "candidates": ["fuzzy", "bm25", "lela_bm25", "lela_dense"],
+        "candidates": ["none", "fuzzy", "bm25", "lela_bm25", "lela_dense"],
         "rerankers": ["none", "cross_encoder", "lela_embedder"],
         "disambiguators": available_disambiguators,
         "knowledge_bases": ["custom"],
@@ -649,20 +649,31 @@ def run_pipeline(
         disambig_params["shuffle_candidates"] = tournament_shuffle
         disambig_params["disable_thinking"] = not tournament_thinking
 
-    config_dict = {
-        "loader": {"name": loader_type, "params": {}},
-        "ner": {"name": ner_type, "params": ner_params},
-        "candidate_generator": {"name": cand_type, "params": cand_params},
-        "reranker": (
+    # Override components if candidate_generator is "none" for NER-only pipeline
+    if cand_type == "none":
+        candidate_generator_config = {"name": "none", "params": {}}
+        reranker_config = {"name": "none", "params": {}}
+        disambiguator_config = None
+    else:
+        candidate_generator_config = {"name": cand_type, "params": cand_params}
+        reranker_config = (
             {"name": reranker_type, "params": reranker_params}
             if reranker_type != "none"
             else {"name": "none", "params": {}}
-        ),
-        "disambiguator": (
+        )
+        disambiguator_config = (
             {"name": disambig_type, "params": disambig_params}
             if disambig_type != "none"
             else None
-        ),
+        )
+
+
+    config_dict = {
+        "loader": {"name": loader_type, "params": {}},
+        "ner": {"name": ner_type, "params": ner_params},
+        "candidate_generator": candidate_generator_config,
+        "reranker": reranker_config,
+        "disambiguator": disambiguator_config,
         "knowledge_base": {"name": kb_type, "params": {"path": kb_file.name}},
         "cache_dir": ".ner_cache",
         "batch_size": 1,
@@ -814,9 +825,11 @@ def update_ner_params(ner_choice: str):
 
 def update_cand_params(cand_choice: str):
     """Show/hide candidate-specific parameters based on selection."""
+    if cand_choice == "none":
+        return gr.update(visible=False), gr.update(visible=False), gr.update(visible=False)
     show_context = cand_choice in ("lela_bm25", "lela_dense")
     show_embedding_model = cand_choice == "lela_dense"
-    return gr.update(visible=show_embedding_model), gr.update(visible=show_context)
+    return gr.update(visible=show_embedding_model), gr.update(visible=show_embedding_model), gr.update(visible=show_context)
 
 
 def update_reranker_params(reranker_choice: str):
