@@ -1,5 +1,5 @@
 """
-spaCy NER components for the NER pipeline.
+spaCy NER components for the EL pipeline.
 
 Provides factories and components for various NER implementations:
 - GLiNERComponent: Zero-shot GLiNER NER
@@ -14,12 +14,12 @@ from typing import List, Optional, Callable
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 
-from ner_pipeline.context import extract_context
-from ner_pipeline.lela.config import (
+from el_pipeline.context import extract_context
+from el_pipeline.lela.config import (
     DEFAULT_GLINER_MODEL,
     NER_LABELS,
 )
-from ner_pipeline.utils import filter_spans, ensure_context_extension
+from el_pipeline.utils import filter_spans, ensure_context_extension
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ def _get_gliner():
 
 
 @Language.factory(
-    "ner_pipeline_gliner",
+    "el_pipeline_gliner",
     default_config={
         "model_name": DEFAULT_GLINER_MODEL,
         "labels": list(NER_LABELS),
@@ -219,7 +219,7 @@ class GLiNERComponent:
 
 
 @Language.factory(
-    "ner_pipeline_simple",
+    "el_pipeline_simple",
     default_config={
         "min_len": 3,
         "context_mode": "sentence",
@@ -292,7 +292,7 @@ class SimpleNERComponent:
 
 
 # @Language.factory(
-#     "ner_pipeline_gliner",
+#     "el_pipeline_gliner",
 #     default_config={
 #         "model_name": "urchade/gliner_base",
 #         "labels": ["person", "organization", "location"],
@@ -384,7 +384,7 @@ class SimpleNERComponent:
 
 
 # @Language.factory(
-#     "ner_pipeline_transformers",
+#     "el_pipeline_transformers",
 #     default_config={
 #         "model_name": "dslim/bert-base-NER",
 #         "context_mode": "sentence",
@@ -445,7 +445,7 @@ class SimpleNERComponent:
 #             if max_length > 100000:
 #                 max_length = 512
 #
-#             self.ner_pipeline = pipeline(
+#             self.el_pipeline = pipeline(
 #                 "ner",
 #                 model=model_name,
 #                 tokenizer=tokenizer,
@@ -470,7 +470,7 @@ class SimpleNERComponent:
 #         if not text or not text.strip():
 #             return doc
 #
-#         predictions = self.ner_pipeline(text)
+#         predictions = self.el_pipeline(text)
 #
 #         spans = []
 #         for pred in predictions:
@@ -502,7 +502,7 @@ class SimpleNERComponent:
 # ============================================================================
 
 
-@Language.component("ner_pipeline_ner_filter")
+@Language.component("el_pipeline_ner_filter")
 def ner_filter_component(doc: Doc) -> Doc:
     """
     Post-filter for spaCy's built-in NER.

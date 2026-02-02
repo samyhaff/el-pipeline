@@ -1,5 +1,5 @@
-from ner_pipeline.registry import knowledge_bases
-from ner_pipeline.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from el_pipeline.registry import knowledge_bases
+from el_pipeline.knowledge_bases.custom import CustomJSONLKnowledgeBase
 
 
 @knowledge_bases.register("wikipedia")

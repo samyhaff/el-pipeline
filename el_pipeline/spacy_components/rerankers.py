@@ -1,5 +1,5 @@
 """
-spaCy reranker components for the NER pipeline.
+spaCy reranker components for the EL pipeline.
 
 Provides factories and components for candidate reranking:
 - LELAEmbedderRerankerComponent: Embedding-based cosine similarity reranking
@@ -14,16 +14,16 @@ import numpy as np
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 
-from ner_pipeline.lela.config import (
+from el_pipeline.lela.config import (
     RERANKER_TOP_K,
     DEFAULT_EMBEDDER_MODEL,
     RERANKER_TASK,
     SPAN_OPEN,
     SPAN_CLOSE,
 )
-from ner_pipeline.lela.llm_pool import get_sentence_transformer_instance, release_sentence_transformer
-from ner_pipeline.utils import ensure_candidates_extension
-from ner_pipeline.types import Candidate, ProgressCallback
+from el_pipeline.lela.llm_pool import get_sentence_transformer_instance, release_sentence_transformer
+from el_pipeline.utils import ensure_candidates_extension
+from el_pipeline.types import Candidate, ProgressCallback
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 @Language.factory(
-    "ner_pipeline_lela_embedder_reranker",
+    "el_pipeline_lela_embedder_reranker",
     default_config={
         "model_name": DEFAULT_EMBEDDER_MODEL,
         "top_k": RERANKER_TOP_K,
@@ -205,7 +205,7 @@ class LELAEmbedderRerankerComponent:
 # ============================================================================
 
 @Language.factory(
-    "ner_pipeline_cross_encoder_reranker",
+    "el_pipeline_cross_encoder_reranker",
     default_config={
         "model_name": "cross-encoder/ms-marco-MiniLM-L-6-v2",
         "top_k": 10,
@@ -318,7 +318,7 @@ class CrossEncoderRerankerComponent:
 # ============================================================================
 
 @Language.factory(
-    "ner_pipeline_noop_reranker",
+    "el_pipeline_noop_reranker",
     default_config={},
 )
 def create_noop_reranker_component(

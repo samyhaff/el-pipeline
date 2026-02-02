@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import spacy
 
-from ner_pipeline.types import Mention
+from el_pipeline.types import Mention
 
 
 class TestGLiNERComponent:
@@ -15,14 +15,14 @@ class TestGLiNERComponent:
     def nlp(self):
         return spacy.blank("en")
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_initialization_loads_model(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_model = MagicMock()
         mock_gliner_class.from_pretrained.return_value = mock_model
         mock_get_gliner.return_value = mock_gliner_class
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -34,12 +34,12 @@ class TestGLiNERComponent:
 
         mock_gliner_class.from_pretrained.assert_called_once()
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_initialization_with_custom_model(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_get_gliner.return_value = mock_gliner_class
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -51,12 +51,12 @@ class TestGLiNERComponent:
 
         mock_gliner_class.from_pretrained.assert_called_once_with("custom/model")
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_initialization_with_custom_labels(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_get_gliner.return_value = mock_gliner_class
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         custom_labels = ["person", "company"]
         component = GLiNERComponent(
@@ -69,12 +69,12 @@ class TestGLiNERComponent:
 
         assert component.labels == custom_labels
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_initialization_with_custom_threshold(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_get_gliner.return_value = mock_gliner_class
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -86,7 +86,7 @@ class TestGLiNERComponent:
 
         assert component.threshold == 0.7
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_call_returns_doc_with_entities(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_model = MagicMock()
@@ -98,7 +98,7 @@ class TestGLiNERComponent:
             {"start": 0, "end": 12, "text": "Barack Obama", "label": "person"},
         ]
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -114,7 +114,7 @@ class TestGLiNERComponent:
         assert len(doc.ents) == 1
         assert doc.ents[0].text == "Barack Obama"
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_entity_has_correct_label(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_model = MagicMock()
@@ -125,7 +125,7 @@ class TestGLiNERComponent:
             {"start": 0, "end": 12, "text": "Barack Obama", "label": "person"},
         ]
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -140,7 +140,7 @@ class TestGLiNERComponent:
 
         assert doc.ents[0].label_ == "person"
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_entity_has_context_extension(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_model = MagicMock()
@@ -151,7 +151,7 @@ class TestGLiNERComponent:
             {"start": 0, "end": 12, "text": "Barack Obama", "label": "person"},
         ]
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -167,7 +167,7 @@ class TestGLiNERComponent:
         # Context should be extracted
         assert doc.ents[0]._.context is not None
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_extract_multiple_entities(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_model = MagicMock()
@@ -179,7 +179,7 @@ class TestGLiNERComponent:
             {"start": 30, "end": 43, "text": "United States", "label": "location"},
         ]
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -196,14 +196,14 @@ class TestGLiNERComponent:
         assert doc.ents[0].text == "Barack Obama"
         assert doc.ents[1].text == "United States"
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_extract_empty_text(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_model = MagicMock()
         mock_gliner_class.from_pretrained.return_value = mock_model
         mock_get_gliner.return_value = mock_gliner_class
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -220,12 +220,12 @@ class TestGLiNERComponent:
         # Should not call predict on empty text
         mock_model.predict_entities.assert_not_called()
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_context_mode_parameter(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_get_gliner.return_value = mock_gliner_class
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,
@@ -237,7 +237,7 @@ class TestGLiNERComponent:
 
         assert component.context_mode == "window"
 
-    @patch("ner_pipeline.spacy_components.ner._get_gliner")
+    @patch("el_pipeline.spacy_components.ner._get_gliner")
     def test_threshold_passed_to_predict(self, mock_get_gliner, nlp):
         mock_gliner_class = MagicMock()
         mock_model = MagicMock()
@@ -246,7 +246,7 @@ class TestGLiNERComponent:
 
         mock_model.predict_entities.return_value = []
 
-        from ner_pipeline.spacy_components.ner import GLiNERComponent
+        from el_pipeline.spacy_components.ner import GLiNERComponent
 
         component = GLiNERComponent(
             nlp=nlp,

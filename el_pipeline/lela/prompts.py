@@ -3,8 +3,8 @@
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
-    from ner_pipeline.knowledge_bases.base import KnowledgeBase
-    from ner_pipeline.types import Candidate
+    from el_pipeline.knowledge_bases.base import KnowledgeBase
+    from el_pipeline.types import Candidate
 
 DEFAULT_SYSTEM_PROMPT = """You are an expert designed to disambiguate entities in text, taking into account the overall context and a list of entity candidates. You are provided with an input text that includes a full contextual narrative, a marked mention enclosed in square brackets, and a list of candidates, each preceded by an index number.
 Your task is to determine the most appropriate entity from the candidates based on the context and candidate entity descriptions.

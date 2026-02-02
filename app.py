@@ -18,10 +18,10 @@ import torch
 # Global cancellation event for cooperative cancellation
 _cancel_event = threading.Event()
 
-from ner_pipeline.config import PipelineConfig
-from ner_pipeline.pipeline import NERPipeline
-from ner_pipeline.memory import get_system_resources
-from ner_pipeline.lela.config import (
+from el_pipeline.config import PipelineConfig
+from el_pipeline.pipeline import NERPipeline
+from el_pipeline.memory import get_system_resources
+from el_pipeline.lela.config import (
     AVAILABLE_LLM_MODELS as LLM_MODEL_CHOICES,
     AVAILABLE_EMBEDDING_MODELS as EMBEDDING_MODEL_CHOICES,
     AVAILABLE_CROSS_ENCODER_MODELS as CROSS_ENCODER_MODEL_CHOICES,
@@ -29,7 +29,7 @@ from ner_pipeline.lela.config import (
 )
 
 DESCRIPTION = """
-# NER Pipeline 🔗
+# EL Pipeline 🔗
 
 Modular NER → candidate generation → rerank → disambiguation pipeline built on spaCy.
 Swap components, configure parameters, and test with your own knowledge bases.
@@ -58,7 +58,7 @@ def _is_vllm_usable() -> bool:
 
 def get_available_components() -> Dict[str, List[str]]:
     """Get list of available spaCy pipeline components."""
-    # These map to spaCy factories registered in ner_pipeline.spacy_components
+    # These map to spaCy factories registered in el_pipeline.spacy_components
     # lela_tournament is the full LELA paper implementation with tournament batching
     # lela_vllm sends all candidates at once (simpler but less accurate for many candidates)
     available_disambiguators = [
@@ -567,7 +567,7 @@ def run_pipeline(
     kb_type: str,
     progress=gr.Progress(),
 ):
-    """Run the NER pipeline with selected configuration.
+    """Run the EL pipeline with selected configuration.
 
     This is a generator function that yields (html_output, stats, result) tuples.
     Yielding allows Gradio to check for cancellation between steps.
@@ -666,7 +666,6 @@ def run_pipeline(
             if disambig_type != "none"
             else None
         )
-
 
     config_dict = {
         "loader": {"name": loader_type, "params": {}},
@@ -826,10 +825,18 @@ def update_ner_params(ner_choice: str):
 def update_cand_params(cand_choice: str):
     """Show/hide candidate-specific parameters based on selection."""
     if cand_choice == "none":
-        return gr.update(visible=False), gr.update(visible=False), gr.update(visible=False)
+        return (
+            gr.update(visible=False),
+            gr.update(visible=False),
+            gr.update(visible=False),
+        )
     show_context = cand_choice in ("lela_bm25", "lela_dense")
     show_embedding_model = cand_choice == "lela_dense"
-    return gr.update(visible=show_embedding_model), gr.update(visible=show_embedding_model), gr.update(visible=show_context)
+    return (
+        gr.update(visible=show_embedding_model),
+        gr.update(visible=show_embedding_model),
+        gr.update(visible=show_context),
+    )
 
 
 def update_reranker_params(reranker_choice: str):
@@ -880,7 +887,7 @@ def compute_memory_estimate(
     llm_model: str,
 ) -> str:
     """Compute and format memory estimate for current configuration."""
-    from ner_pipeline.lela.config import VLLM_GPU_MEMORY_UTILIZATION
+    from el_pipeline.lela.config import VLLM_GPU_MEMORY_UTILIZATION
 
     try:
         resources = get_system_resources()
@@ -1038,7 +1045,7 @@ def start_cancellation():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="NER Pipeline Gradio UI")
+    parser = argparse.ArgumentParser(description="EL Pipeline Gradio UI")
     parser.add_argument(
         "--log",
         type=str,
@@ -1090,11 +1097,11 @@ if __name__ == "__main__":
     }
     """
 
-    with gr.Blocks(title="NER Pipeline", fill_height=True, css=custom_css) as demo:
+    with gr.Blocks(title="EL Pipeline", fill_height=True, css=custom_css) as demo:
         # State for storing full pipeline result (before confidence filtering)
         full_result_state = gr.State(value=None)
 
-        gr.Markdown("# NER Pipeline", elem_classes=["main-header"])
+        gr.Markdown("# EL Pipeline", elem_classes=["main-header"])
         gr.Markdown(
             "*Modular entity recognition and linking pipeline. Upload a knowledge base, enter text, configure the pipeline, and run.*",
             elem_classes=["subtitle"],
@@ -1389,11 +1396,11 @@ Test files are available in `data/test/`:
 
 | Config Name | spaCy Factory |
 |-------------|---------------|
-| simple | ner_pipeline_simple |
-| lela_bm25 | ner_pipeline_lela_bm25_candidates |
-| lela_embedder | ner_pipeline_lela_embedder_reranker |
-| lela_tournament | ner_pipeline_lela_tournament_disambiguator |
-| lela_vllm | ner_pipeline_lela_vllm_disambiguator |
+| simple | el_pipeline_simple |
+| lela_bm25 | el_pipeline_lela_bm25_candidates |
+| lela_embedder | el_pipeline_lela_embedder_reranker |
+| lela_tournament | el_pipeline_lela_tournament_disambiguator |
+| lela_vllm | el_pipeline_lela_vllm_disambiguator |
 
 ---
 

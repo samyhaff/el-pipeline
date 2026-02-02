@@ -1,4 +1,4 @@
-"""Integration tests for the NER pipeline."""
+"""Integration tests for the EL pipeline."""
 
 import json
 import os
@@ -6,9 +6,9 @@ import tempfile
 
 import pytest
 
-from ner_pipeline.config import PipelineConfig
-from ner_pipeline.pipeline import NERPipeline
-from ner_pipeline.types import Document
+from el_pipeline.config import PipelineConfig
+from el_pipeline.pipeline import NERPipeline
+from el_pipeline.types import Document
 
 
 @pytest.mark.integration

@@ -38,9 +38,9 @@ filterwarnings = [
 addopts = "-v --tb=short"
 
 [tool.coverage.run]
-source = ["ner_pipeline"]
+source = ["el_pipeline"]
 omit = [
-    "ner_pipeline/scripts/*",
+    "el_pipeline/scripts/*",
     "*/__pycache__/*",
 ]
 

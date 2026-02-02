@@ -72,11 +72,11 @@ class TestGLiNER:
     def test_lela_gliner_chunking(self, sample_text: str, minimal_config_dict: dict):
         """LELA GLiNER processes long text with chunking."""
         try:
-            from ner_pipeline.config import PipelineConfig
-            from ner_pipeline.pipeline import NERPipeline
-            from ner_pipeline.types import Document
+            from el_pipeline.config import PipelineConfig
+            from el_pipeline.pipeline import NERPipeline
+            from el_pipeline.types import Document
         except ImportError:
-            pytest.skip("ner_pipeline not available")
+            pytest.skip("el_pipeline not available")
 
         try:
             from gliner import GLiNER  # noqa: F401

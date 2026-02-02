@@ -1,6 +1,6 @@
 # Python API Reference
 
-This document provides a comprehensive reference for the NER Pipeline Python API, built on spaCy's component architecture.
+This document provides a comprehensive reference for the EL Pipeline Python API, built on spaCy's component architecture.
 
 ## Table of Contents
 
@@ -18,11 +18,11 @@ This document provides a comprehensive reference for the NER Pipeline Python API
 
 The main orchestrator class that manages the entity linking pipeline using spaCy.
 
-**Location:** `ner_pipeline/pipeline.py`
+**Location:** `el_pipeline/pipeline.py`
 
 ```python
-from ner_pipeline.pipeline import NERPipeline
-from ner_pipeline.config import PipelineConfig
+from el_pipeline.pipeline import NERPipeline
+from el_pipeline.config import PipelineConfig
 ```
 
 #### Constructor
@@ -133,10 +133,10 @@ results = pipeline.run(
 
 Configuration dataclass for pipeline setup.
 
-**Location:** `ner_pipeline/config.py`
+**Location:** `el_pipeline/config.py`
 
 ```python
-from ner_pipeline.config import PipelineConfig
+from el_pipeline.config import PipelineConfig
 ```
 
 #### Class Methods
@@ -185,11 +185,11 @@ All pipeline components are implemented as spaCy factories and can be used direc
 Import the `spacy_components` module to register all factories:
 
 ```python
-from ner_pipeline import spacy_components  # Registers all factories
+from el_pipeline import spacy_components  # Registers all factories
 import spacy
 
 nlp = spacy.blank("en")
-nlp.add_pipe("ner_pipeline_simple")  # Now available
+nlp.add_pipe("el_pipeline_simple")  # Now available
 ```
 
 ### spaCy Extensions
@@ -207,7 +207,7 @@ Span.set_extension("resolved_entity", default=None)
 
 ### NER Components
 
-#### `ner_pipeline_lela_gliner`
+#### `el_pipeline_lela_gliner`
 
 Zero-shot GLiNER NER with LELA defaults.
 
@@ -221,13 +221,13 @@ Zero-shot GLiNER NER with LELA defaults.
 
 **Example:**
 ```python
-nlp.add_pipe("ner_pipeline_lela_gliner", config={
+nlp.add_pipe("el_pipeline_lela_gliner", config={
     "labels": ["person", "organization", "location"],
     "threshold": 0.4
 })
 ```
 
-#### `ner_pipeline_simple`
+#### `el_pipeline_simple`
 
 Lightweight regex-based NER.
 
@@ -239,10 +239,10 @@ Lightweight regex-based NER.
 
 **Example:**
 ```python
-nlp.add_pipe("ner_pipeline_simple", config={"min_len": 2})
+nlp.add_pipe("el_pipeline_simple", config={"min_len": 2})
 ```
 
-#### `ner_pipeline_gliner`
+#### `el_pipeline_gliner`
 
 Standard GLiNER wrapper.
 
@@ -254,7 +254,7 @@ Standard GLiNER wrapper.
 | `threshold` | float | 0.5 | Detection threshold |
 | `context_mode` | str | "sentence" | Context extraction mode |
 
-#### `ner_pipeline_transformers`
+#### `el_pipeline_transformers`
 
 HuggingFace transformers NER.
 
@@ -265,7 +265,7 @@ HuggingFace transformers NER.
 | `context_mode` | str | "sentence" | Context extraction mode |
 | `aggregation_strategy` | str | "simple" | Token aggregation |
 
-#### `ner_pipeline_ner_filter`
+#### `el_pipeline_ner_filter`
 
 Post-filter for spaCy's built-in NER (adds context extension).
 
@@ -276,12 +276,12 @@ spacy_nlp = spacy.load("en_core_web_sm")
 
 # Copy NER and add filter
 nlp.add_pipe("ner", source=spacy_nlp)
-nlp.add_pipe("ner_pipeline_ner_filter")
+nlp.add_pipe("el_pipeline_ner_filter")
 ```
 
 ### Candidate Generation Components
 
-#### `ner_pipeline_lela_bm25_candidates`
+#### `el_pipeline_lela_bm25_candidates`
 
 BM25 retrieval using bm25s library with stemming.
 
@@ -294,11 +294,11 @@ BM25 retrieval using bm25s library with stemming.
 
 **Requires initialization:**
 ```python
-component = nlp.add_pipe("ner_pipeline_lela_bm25_candidates")
+component = nlp.add_pipe("el_pipeline_lela_bm25_candidates")
 component.initialize(kb)
 ```
 
-#### `ner_pipeline_lela_dense_candidates`
+#### `el_pipeline_lela_dense_candidates`
 
 Dense retrieval using OpenAI-compatible embeddings and FAISS.
 
@@ -311,7 +311,7 @@ Dense retrieval using OpenAI-compatible embeddings and FAISS.
 | `port` | int | 8000 | API port |
 | `use_context` | bool | True | Include context in query |
 
-#### `ner_pipeline_fuzzy_candidates`
+#### `el_pipeline_fuzzy_candidates`
 
 RapidFuzz string matching.
 
@@ -320,7 +320,7 @@ RapidFuzz string matching.
 |-----------|------|---------|-------------|
 | `top_k` | int | 20 | Maximum candidates |
 
-#### `ner_pipeline_bm25_candidates`
+#### `el_pipeline_bm25_candidates`
 
 Standard BM25 using rank-bm25 library.
 
@@ -331,7 +331,7 @@ Standard BM25 using rank-bm25 library.
 
 ### Reranker Components
 
-#### `ner_pipeline_lela_embedder_reranker`
+#### `el_pipeline_lela_embedder_reranker`
 
 Embedding-based cosine similarity reranking with marked mentions.
 
@@ -343,7 +343,7 @@ Embedding-based cosine similarity reranking with marked mentions.
 | `base_url` | str | "http://localhost" | API endpoint |
 | `port` | int | 8000 | API port |
 
-#### `ner_pipeline_cross_encoder_reranker`
+#### `el_pipeline_cross_encoder_reranker`
 
 Cross-encoder reranking using sentence-transformers.
 
@@ -353,7 +353,7 @@ Cross-encoder reranking using sentence-transformers.
 | `model_name` | str | "cross-encoder/ms-marco-MiniLM-L-6-v2" | Model |
 | `top_k` | int | 10 | Candidates to keep |
 
-#### `ner_pipeline_noop_reranker`
+#### `el_pipeline_noop_reranker`
 
 Pass-through (no reranking).
 
@@ -361,7 +361,7 @@ Pass-through (no reranking).
 
 ### Disambiguator Components
 
-#### `ner_pipeline_lela_tournament_disambiguator`
+#### `el_pipeline_lela_tournament_disambiguator`
 
 **Recommended** - Tournament-style LLM disambiguation as described in the LELA paper.
 
@@ -381,7 +381,7 @@ Pass-through (no reranking).
 
 **Requires initialization:**
 ```python
-component = nlp.add_pipe("ner_pipeline_lela_tournament_disambiguator")
+component = nlp.add_pipe("el_pipeline_lela_tournament_disambiguator")
 component.initialize(kb)
 ```
 
@@ -394,7 +394,7 @@ component.initialize(kb)
 
 **See Also:** [NIL Linking](#nil-linking), [Qwen3 Thinking Mode](#qwen3-thinking-mode)
 
-#### `ner_pipeline_lela_vllm_disambiguator`
+#### `el_pipeline_lela_vllm_disambiguator`
 
 vLLM-based LLM disambiguation - sends all candidates at once (simpler, no tournament).
 
@@ -413,13 +413,13 @@ vLLM-based LLM disambiguation - sends all candidates at once (simpler, no tourna
 
 **Requires initialization:**
 ```python
-component = nlp.add_pipe("ner_pipeline_lela_vllm_disambiguator")
+component = nlp.add_pipe("el_pipeline_lela_vllm_disambiguator")
 component.initialize(kb)
 ```
 
 **See Also:** [Self-Consistency Voting](#self-consistency-voting), [NIL Linking](#nil-linking), [Qwen3 Thinking Mode](#qwen3-thinking-mode)
 
-#### `ner_pipeline_lela_transformers_disambiguator`
+#### `el_pipeline_lela_transformers_disambiguator`
 
 Transformers-based LLM disambiguation (alternative to vLLM for P100/Pascal GPUs).
 
@@ -435,7 +435,7 @@ Transformers-based LLM disambiguation (alternative to vLLM for P100/Pascal GPUs)
 
 **Requires initialization:**
 ```python
-component = nlp.add_pipe("ner_pipeline_lela_transformers_disambiguator")
+component = nlp.add_pipe("el_pipeline_lela_transformers_disambiguator")
 component.initialize(kb)
 ```
 
@@ -457,13 +457,13 @@ component.initialize(kb)
 }
 ```
 
-#### `ner_pipeline_first_disambiguator`
+#### `el_pipeline_first_disambiguator`
 
 Select first candidate.
 
 **Requires initialization:** Yes (needs KB reference)
 
-#### `ner_pipeline_popularity_disambiguator`
+#### `el_pipeline_popularity_disambiguator`
 
 Select by highest score (first in sorted list).
 
@@ -471,14 +471,14 @@ Select by highest score (first in sorted list).
 
 ## Data Types
 
-All core data types are defined in `ner_pipeline/types.py`.
+All core data types are defined in `el_pipeline/types.py`.
 
 ### Document
 
 Represents an input document.
 
 ```python
-from ner_pipeline.types import Document
+from el_pipeline.types import Document
 
 doc = Document(
     id="doc-001",
@@ -499,7 +499,7 @@ doc = Document(
 Represents an entity in the knowledge base.
 
 ```python
-from ner_pipeline.types import Entity
+from el_pipeline.types import Entity
 
 entity = Entity(
     id="Q937",
@@ -522,7 +522,7 @@ entity = Entity(
 Represents a potential KB match for a mention.
 
 ```python
-from ner_pipeline.types import Candidate
+from el_pipeline.types import Candidate
 
 candidate = Candidate(
     entity_id="Q937",
@@ -552,7 +552,7 @@ candidates = [
 
 Convert to Candidate objects for output:
 ```python
-from ner_pipeline.types import tuples_to_candidates
+from el_pipeline.types import tuples_to_candidates
 candidates = tuples_to_candidates(tuples_list)
 ```
 
@@ -565,26 +565,26 @@ candidates = tuples_to_candidates(tuples_list)
 | Config Name | spaCy Factory |
 |-------------|---------------|
 | **NER** | |
-| `lela_gliner` | `ner_pipeline_lela_gliner` |
-| `simple` | `ner_pipeline_simple` |
-| `gliner` | `ner_pipeline_gliner` |
-| `transformers` | `ner_pipeline_transformers` |
-| `spacy` | Built-in NER + `ner_pipeline_ner_filter` |
+| `lela_gliner` | `el_pipeline_lela_gliner` |
+| `simple` | `el_pipeline_simple` |
+| `gliner` | `el_pipeline_gliner` |
+| `transformers` | `el_pipeline_transformers` |
+| `spacy` | Built-in NER + `el_pipeline_ner_filter` |
 | **Candidate Generators** | |
-| `lela_bm25` | `ner_pipeline_lela_bm25_candidates` |
-| `lela_dense` | `ner_pipeline_lela_dense_candidates` |
-| `fuzzy` | `ner_pipeline_fuzzy_candidates` |
-| `bm25` | `ner_pipeline_bm25_candidates` |
+| `lela_bm25` | `el_pipeline_lela_bm25_candidates` |
+| `lela_dense` | `el_pipeline_lela_dense_candidates` |
+| `fuzzy` | `el_pipeline_fuzzy_candidates` |
+| `bm25` | `el_pipeline_bm25_candidates` |
 | **Rerankers** | |
-| `lela_embedder` | `ner_pipeline_lela_embedder_reranker` |
-| `cross_encoder` | `ner_pipeline_cross_encoder_reranker` |
-| `none` | `ner_pipeline_noop_reranker` |
+| `lela_embedder` | `el_pipeline_lela_embedder_reranker` |
+| `cross_encoder` | `el_pipeline_cross_encoder_reranker` |
+| `none` | `el_pipeline_noop_reranker` |
 | **Disambiguators** | |
-| `lela_tournament` | `ner_pipeline_lela_tournament_disambiguator` |
-| `lela_vllm` | `ner_pipeline_lela_vllm_disambiguator` |
-| `lela_transformers` | `ner_pipeline_lela_transformers_disambiguator` |
-| `first` | `ner_pipeline_first_disambiguator` |
-| `popularity` | `ner_pipeline_popularity_disambiguator` |
+| `lela_tournament` | `el_pipeline_lela_tournament_disambiguator` |
+| `lela_vllm` | `el_pipeline_lela_vllm_disambiguator` |
+| `lela_transformers` | `el_pipeline_lela_transformers_disambiguator` |
+| `first` | `el_pipeline_first_disambiguator` |
+| `popularity` | `el_pipeline_popularity_disambiguator` |
 
 #### Loaders (Registry-based)
 
@@ -631,7 +631,7 @@ The `json` and `jsonl` loaders support a `text_field` parameter to customize whi
 
 Utilities for extracting context around mentions.
 
-**Location:** `ner_pipeline/context.py`
+**Location:** `el_pipeline/context.py`
 
 ### Functions
 
@@ -640,7 +640,7 @@ Utilities for extracting context around mentions.
 Extract surrounding sentences containing the mention.
 
 ```python
-from ner_pipeline.context import extract_sentence_context
+from el_pipeline.context import extract_sentence_context
 
 text = "First sentence. Albert Einstein was born in Germany. Third sentence."
 context = extract_sentence_context(text, start=16, end=31, max_sentences=1)
@@ -652,7 +652,7 @@ context = extract_sentence_context(text, start=16, end=31, max_sentences=1)
 Extract a fixed character window around the mention.
 
 ```python
-from ner_pipeline.context import extract_window_context
+from el_pipeline.context import extract_window_context
 
 context = extract_window_context(text, start=16, end=31, window_chars=100)
 ```
@@ -662,7 +662,7 @@ context = extract_window_context(text, start=16, end=31, window_chars=100)
 General dispatcher for context extraction.
 
 ```python
-from ner_pipeline.context import extract_context
+from el_pipeline.context import extract_context
 
 # Sentence mode
 context = extract_context(text, 16, 31, mode="sentence", max_sentences=2)
@@ -680,8 +680,8 @@ The pipeline supports progress callbacks at multiple levels for tracking process
 #### Pipeline Initialization
 
 ```python
-from ner_pipeline.pipeline import NERPipeline
-from ner_pipeline.config import PipelineConfig
+from el_pipeline.pipeline import NERPipeline
+from el_pipeline.config import PipelineConfig
 
 def init_callback(progress: float, description: str):
     print(f"Init {progress*100:.0f}%: {description}")
@@ -826,9 +826,9 @@ answer: 1
 ### Basic Pipeline Usage
 
 ```python
-from ner_pipeline.config import PipelineConfig
-from ner_pipeline.pipeline import NERPipeline
-from ner_pipeline.types import Document
+from el_pipeline.config import PipelineConfig
+from el_pipeline.pipeline import NERPipeline
+from el_pipeline.types import Document
 import json
 
 # Load configuration
@@ -858,14 +858,14 @@ for entity in result["entities"]:
 
 ```python
 import spacy
-from ner_pipeline import spacy_components  # Register factories
-from ner_pipeline.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from el_pipeline import spacy_components  # Register factories
+from el_pipeline.knowledge_bases.custom import CustomJSONLKnowledgeBase
 
 # Build custom pipeline
 nlp = spacy.blank("en")
-nlp.add_pipe("ner_pipeline_simple", config={"min_len": 3})
-cand_component = nlp.add_pipe("ner_pipeline_fuzzy_candidates", config={"top_k": 10})
-disamb_component = nlp.add_pipe("ner_pipeline_first_disambiguator")
+nlp.add_pipe("el_pipeline_simple", config={"min_len": 3})
+cand_component = nlp.add_pipe("el_pipeline_fuzzy_candidates", config={"top_k": 10})
+disamb_component = nlp.add_pipe("el_pipeline_first_disambiguator")
 
 # Initialize with knowledge base
 kb = CustomJSONLKnowledgeBase(path="kb.jsonl")
@@ -901,7 +901,7 @@ for result in results:
 ### Working with Knowledge Bases
 
 ```python
-from ner_pipeline.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from el_pipeline.knowledge_bases.custom import CustomJSONLKnowledgeBase
 
 # Load knowledge base
 kb = CustomJSONLKnowledgeBase(path="entities.jsonl")
