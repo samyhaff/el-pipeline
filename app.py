@@ -623,7 +623,7 @@ def run_pipeline(
 
     # Build candidate params
     cand_params = {"top_k": cand_top_k}
-    if cand_type == "lela_dense"):
+    if cand_type == "lela_dense":
         cand_params["use_context"] = cand_use_context
     if cand_type == "lela_dense":
         cand_params["model_name"] = cand_embedding_model
