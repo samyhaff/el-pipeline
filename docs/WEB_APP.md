@@ -84,7 +84,7 @@ A horizontal row of component configuration columns:
 1. **NER**: Model selection and model-specific parameters
 2. **Candidates**: Generator selection, embedding model (for dense), top-K, context usage
 3. **Reranking**: Reranker selection, embedding model (for LELA embedder), top-K
-4. **Disambiguation**: Method selection, LLM model choice, tournament parameters
+4. **Disambiguation**: Method selection, LLM model choice
 
 **Memory Estimation Display**: Shows real-time GPU memory estimates above the configuration, including:
 - GPU name and available VRAM
@@ -226,21 +226,9 @@ Each NER option maps to a spaCy pipeline factory:
 - **spaCy Factory:** `ner_pipeline_popularity_disambiguator`
 - Selects the candidate with the highest score
 
-#### LELA Tournament (Recommended)
-- **spaCy Factory:** `ner_pipeline_lela_tournament_disambiguator`
-- **LLM Model**: Selectable from dropdown:
-  - Qwen3-0.6B (~2GB VRAM)
-  - Qwen3-1.7B (~4GB VRAM)
-  - Qwen3-4B (~9GB VRAM)
-  - Qwen3-8B (~18GB VRAM)
-- **Batch Size**: Tournament batch size (2-32, default: 8, or auto √candidates)
-- **Shuffle**: Randomize candidate order before tournament
-- **Reasoning**: Enable chain-of-thought reasoning for better accuracy
-- Implements the full LELA paper tournament strategy
-
 #### LELA vLLM
 - **spaCy Factory:** `ner_pipeline_lela_vllm_disambiguator`
-- **LLM Model**: Same model choices as tournament
+- **LLM Model**: Same model choices as LELA vLLM
 - Sends all candidates at once (simpler, faster for small candidate sets)
 - Uses vLLM for fast batched inference
 
@@ -474,16 +462,14 @@ For custom entity types and domain adaptation:
 
 ### Full LELA Pipeline
 
-Maximum accuracy with LLM tournament disambiguation:
+Maximum accuracy with LLM disambiguation:
 
 - **NER**: lela_gliner (threshold: 0.5)
 - **Candidates**: lela_bm25 (top_k: 64)
 - **Reranker**: lela_embedder (top_k: 10, Qwen3-Embed-4B)
-- **Disambiguator**: lela_tournament (Qwen3-4B, reasoning enabled)
+- **Disambiguator**: lela_vllm (Qwen3-4B)
 
 **VRAM Requirements:**
 - Qwen3-0.6B LLM: ~4GB total
 - Qwen3-4B LLM: ~12GB total
 - Qwen3-8B LLM: ~20GB total
-
-**Note:** The tournament disambiguator is recommended over lela_vllm for large candidate sets as it implements the full LELA paper methodology.

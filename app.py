@@ -54,9 +54,7 @@ def _is_vllm_usable() -> bool:
 def get_available_components() -> Dict[str, List[str]]:
     """Get list of available spaCy pipeline components."""
     # These map to spaCy factories registered in ner_pipeline.spacy_components
-    # lela_tournament is the full LELA paper implementation with tournament batching
-    # lela_vllm sends all candidates at once (simpler but less accurate for many candidates)
-    available_disambiguators = ["none", "first", "popularity", "lela_tournament", "lela_vllm", "lela_transformers"]
+    available_disambiguators = ["none", "first", "popularity", "lela_vllm", "lela_transformers"]
     
     return {
         "loaders": ["text", "pdf", "docx", "html", "json", "jsonl"],
@@ -513,8 +511,6 @@ def run_pipeline(
     reranker_top_k: int,
     disambig_type: str,
     llm_model: str,
-    tournament_batch_size: int,
-    tournament_shuffle: bool,
     lela_thinking: bool,
     lela_none_candidate: bool,
     kb_type: str,
@@ -590,14 +586,10 @@ def run_pipeline(
 
     # Build disambiguator params
     disambig_params = {}
-    if disambig_type in ("lela_tournament", "lela_vllm", "lela_transformers"):
+    if disambig_type in ("lela_vllm", "lela_transformers"):
         disambig_params["model_name"] = llm_model
         disambig_params["disable_thinking"] = not lela_thinking
         disambig_params["add_none_candidate"] = lela_none_candidate
-    if disambig_type == "lela_tournament":
-        # batch_size=0 means auto (sqrt of candidates)
-        disambig_params["batch_size"] = tournament_batch_size if tournament_batch_size > 0 else None
-        disambig_params["shuffle_candidates"] = tournament_shuffle
 
     config_dict = {
         "loader": {"name": loader_type, "params": {}},
@@ -800,9 +792,8 @@ def update_reranker_params(reranker_choice: str):
 
 def update_disambig_params(disambig_choice: str):
     """Show/hide disambiguator-specific parameters based on selection."""
-    show_tournament = disambig_choice == "lela_tournament"
-    show_llm = disambig_choice in ("lela_tournament", "lela_vllm", "lela_transformers")
-    return gr.update(visible=show_tournament), gr.update(visible=show_llm), gr.update(visible=show_llm)
+    show_llm = disambig_choice in ("lela_vllm", "lela_transformers")
+    return gr.update(visible=show_llm), gr.update(visible=show_llm)
 
 
 def update_loader_from_file(file: Optional[gr.File]):
@@ -1269,16 +1260,6 @@ if __name__ == "__main__":
                                 label="'None' Candidate",
                                 value=True,
                             )
-                        with gr.Group(visible=False) as tournament_params:
-                            tournament_batch_size = gr.Slider(
-                                minimum=2, maximum=32, value=8, step=1,
-                                label="Batch Size",
-                            )
-                            tournament_shuffle = gr.Checkbox(
-                                label="Shuffle",
-                                value=True,
-                            )
-
                 # Hidden loader and KB type (auto-detected)
                 loader_type = gr.Dropdown(
                     choices=components["loaders"],
@@ -1343,7 +1324,6 @@ Test files are available in `data/test/`:
 | **none** | No disambiguation |
 | **first** | Select first candidate |
 | **popularity** | Select by popularity |
-| **lela_tournament** | LLM tournament selection (LELA paper) |
 | **lela_vllm** | vLLM-based disambiguation |
 
 ---
@@ -1356,7 +1336,6 @@ Test files are available in `data/test/`:
 | lela_gliner | ner_pipeline_lela_gliner |
 | lela_bm25 | ner_pipeline_lela_bm25_candidates |
 | lela_embedder | ner_pipeline_lela_embedder_reranker |
-| lela_tournament | ner_pipeline_lela_tournament_disambiguator |
 | lela_vllm | ner_pipeline_lela_vllm_disambiguator |
 
 ---
@@ -1414,7 +1393,7 @@ Test files are available in `data/test/`:
         disambig_type.change(
             fn=update_disambig_params,
             inputs=[disambig_type],
-            outputs=[tournament_params, llm_model, lela_common_params],
+            outputs=[llm_model, lela_common_params],
         )
 
         # Memory estimate updates
@@ -1461,8 +1440,6 @@ Test files are available in `data/test/`:
                 reranker_top_k,
                 disambig_type,
                 llm_model,
-                tournament_batch_size,
-                tournament_shuffle,
                 lela_thinking,
                 lela_none_candidate,
                 kb_type,

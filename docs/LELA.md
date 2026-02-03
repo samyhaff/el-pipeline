@@ -19,7 +19,7 @@ LELA is a **true zero-shot** entity linking approach that:
 
 - Works with any knowledge base and domain without fine-tuning
 - Uses LLM reasoning for disambiguation
-- Employs a tournament-style candidate selection strategy
+- Employs LLM reasoning for candidate selection
 - Is retriever-agnostic and LLM-agnostic
 
 ### Key Benefits
@@ -90,28 +90,6 @@ Output: Paris (city)
 ```
 
 Implemented via: `ner_pipeline_lela_vllm_disambiguator`
-
-### Tournament Strategy
-
-To handle large candidate sets, LELA uses a **tournament approach**:
-
-```
-Round 1: [64 candidates] → Split into batches of 8
-         8 batches × 8 candidates → 8 winners
-
-Round 2: [8 winners] → 1 batch of 8
-         → Final winner
-```
-
-**Benefits:**
-1. Fits candidates into context window
-2. Allows fine-grained reasoning per batch
-3. Stronger candidates face each other in later rounds
-
-**Batch Size Trade-off:**
-- Smaller k: More rounds, finer reasoning, slower
-- Larger k: Fewer rounds, less focus, faster
-- Recommended: k = √C (e.g., k=8 for 64 candidates)
 
 ### LLM Prompt Structure
 
@@ -296,62 +274,9 @@ nlp.add_pipe("ner_pipeline_lela_embedder_reranker", config={
 
 **Note:** The reranker now uses SentenceTransformers directly for local model loading. No external API server is required.
 
-### LELA Tournament Disambiguation: `ner_pipeline_lela_tournament_disambiguator`
+### LELA vLLM Disambiguation: `ner_pipeline_lela_vllm_disambiguator`
 
-**Recommended** - Full implementation of the LELA paper's tournament-style disambiguation.
-
-LLM-based disambiguation using vLLM with tournament batching for improved accuracy on large candidate sets.
-
-**Default Model:** `Qwen/Qwen3-4B`
-
-**Features:**
-- **Tournament-style batching**: Candidates are split into batches of size k, winners compete in next round
-- **Random shuffling**: Candidates are randomized before tournament (as per paper)
-- **Automatic batch sizing**: Default k = √C (square root of candidate count)
-- **"None" candidate option**: Can reject all candidates (NIL linking)
-- **Chain-of-thought reasoning**: LLM reasoning enabled by default for better accuracy
-
-**spaCy Usage:**
-```python
-disamb = nlp.add_pipe("ner_pipeline_lela_tournament_disambiguator", config={
-    "model_name": "Qwen/Qwen3-4B",
-    "tensor_parallel_size": 1,
-    "batch_size": None,  # Auto: sqrt(candidates)
-    "shuffle_candidates": True,
-    "add_none_candidate": True,
-    "add_descriptions": True,
-    "disable_thinking": False,  # Enable reasoning
-})
-disamb.initialize(kb)
-```
-
-**JSON Config:**
-```json
-{
-  "name": "lela_tournament",
-  "params": {
-    "model_name": "Qwen/Qwen3-4B",
-    "tensor_parallel_size": 1,
-    "batch_size": null,
-    "shuffle_candidates": true,
-    "add_none_candidate": true,
-    "add_descriptions": true,
-    "disable_thinking": false
-  }
-}
-```
-
-**Batch Size (k) Trade-offs:**
-| k | Rounds (64 candidates) | Accuracy | Speed |
-|---|------------------------|----------|-------|
-| 2 | 6 | Lower | Slowest |
-| 8 (√64) | 2 | **Best** | Balanced |
-| 16 | 2 | Good | Faster |
-| 64 | 1 (no tournament) | Lowest | Fastest |
-
-### LELA Simple Disambiguation: `ner_pipeline_lela_vllm_disambiguator`
-
-LLM-based disambiguation using vLLM - sends all candidates at once (no tournament batching).
+LLM-based disambiguation using vLLM for fast batched inference.
 
 **Default Model:** `Qwen/Qwen3-4B`
 
@@ -478,15 +403,13 @@ LELA-format JSONL knowledge base where title serves as ID.
     }
   },
   "disambiguator": {
-    "name": "lela_tournament",
+    "name": "lela_vllm",
     "params": {
       "model_name": "Qwen/Qwen3-4B",
       "tensor_parallel_size": 1,
-      "batch_size": null,
-      "shuffle_candidates": true,
       "add_none_candidate": true,
       "add_descriptions": true,
-      "disable_thinking": false
+      "disable_thinking": true
     }
   },
   "knowledge_base": {
@@ -494,9 +417,6 @@ LELA-format JSONL knowledge base where title serves as ID.
     "params": {"path": "kb.jsonl"}
   }
 }
-```
-
-**Note:** The `lela_tournament` disambiguator is recommended over `lela_vllm` for large candidate sets as it implements the full LELA paper tournament methodology.
 
 ### Lightweight Configuration (BM25 only)
 
@@ -755,7 +675,6 @@ python -m ner_pipeline.cli \
 | lela_bm25 | No | CPU-based BM25 |
 | lela_dense | Yes | Embedding computation via SentenceTransformers |
 | lela_embedder | Yes | Embedding computation via SentenceTransformers |
-| lela_tournament | Yes (Required) | vLLM-based LLM inference |
 | lela_vllm | Yes (Required) | vLLM-based LLM inference |
 | lela_transformers | Yes | HuggingFace transformers (better P100 support) |
 

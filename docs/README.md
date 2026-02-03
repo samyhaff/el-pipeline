@@ -82,9 +82,9 @@ The pipeline uses spaCy's component system where each stage is a registered fact
 │                              ▼                                │
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │  Disambiguator (ent._.resolved_entity set)              │  │
-│  │  Factories: ner_pipeline_lela_tournament_disambiguator, │  │
-│  │             _lela_vllm_disambiguator, _lela_transformers│  │
-│  │             _disambiguator, _first_disambiguator,       │  │
+│  │  Factories: ner_pipeline_lela_vllm_disambiguator,       │  │
+│  │             _lela_transformers_disambiguator,            │  │
+│  │             _first_disambiguator,                       │  │
 │  │             _popularity_disambiguator                   │  │
 │  └─────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────┘

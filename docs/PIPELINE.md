@@ -113,7 +113,6 @@ doc = nlp("Albert Einstein visited Paris.")
 | `lela_embedder` | `ner_pipeline_lela_embedder_reranker` |
 | `cross_encoder` | `ner_pipeline_cross_encoder_reranker` |
 | `none` | `ner_pipeline_noop_reranker` |
-| `lela_tournament` | `ner_pipeline_lela_tournament_disambiguator` |
 | `lela_vllm` | `ner_pipeline_lela_vllm_disambiguator` |
 | `lela_transformers` | `ner_pipeline_lela_transformers_disambiguator` |
 | `first` | `ner_pipeline_first_disambiguator` |
@@ -458,38 +457,9 @@ Disambiguator components set `ent._.resolved_entity` with the selected `Entity`.
 
 **Location:** `ner_pipeline/spacy_components/disambiguators.py`
 
-### LELATournamentDisambiguatorComponent
-
-**Recommended** - Tournament-style LLM disambiguation as described in the LELA paper.
-
-**Factory:** `ner_pipeline_lela_tournament_disambiguator`
-
-**Config:**
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `model_name` | str | "Qwen/Qwen3-4B" | LLM model |
-| `tensor_parallel_size` | int | 1 | GPU parallelism |
-| `max_model_len` | int | None | Max context length |
-| `batch_size` | int | None | Tournament batch size (None = √candidates) |
-| `shuffle_candidates` | bool | True | Randomize candidate order |
-| `add_none_candidate` | bool | True | Add "None" option |
-| `add_descriptions` | bool | True | Include descriptions |
-| `disable_thinking` | bool | False | Disable reasoning |
-| `system_prompt` | str | LELA default | Custom prompt |
-| `generation_config` | dict | {} | vLLM settings |
-
-**Requires:** `initialize(kb)` call
-
-**Tournament Algorithm:**
-1. Shuffle candidates randomly
-2. Split into batches of size k (default √C)
-3. LLM selects winner from each batch
-4. Winners compete in next round
-5. Repeat until one winner remains
-
 ### LELAvLLMDisambiguatorComponent
 
-vLLM-based LLM disambiguation - sends all candidates at once (no tournament).
+vLLM-based LLM disambiguation - sends all candidates at once.
 
 **Factory:** `ner_pipeline_lela_vllm_disambiguator`
 

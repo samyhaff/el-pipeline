@@ -96,7 +96,6 @@ COMPONENT_DEFAULT_MEMORY: Dict[str, float] = {
     "first": 0.0,
     "popularity": 0.0,
     "lela_vllm": 10.0,
-    "lela_tournament": 10.0,
     "lela_transformers": 10.0,
 }
 
@@ -282,7 +281,7 @@ def estimate_component_memory(
         return estimate_model_memory(model, "embedding"), model
 
     # vLLM disambiguators
-    if component_name in ("lela_vllm", "lela_tournament", "lela_transformers"):
+    if component_name in ("lela_vllm", "lela_transformers"):
         model = params.get("model_name", "Qwen/Qwen3-4B")
         return estimate_model_memory(model, "llm"), model
 
@@ -414,7 +413,7 @@ def check_memory_requirements(
             # Check if LLM disambiguator is used
             disambig_config = config_dict.get("disambiguator", {})
             disambig_name = disambig_config.get("name", "") if disambig_config else ""
-            uses_vllm = disambig_name in ("lela_vllm", "lela_tournament", "lela_transformers")
+            uses_vllm = disambig_name in ("lela_vllm", "lela_transformers")
             
             if uses_vllm:
                 # vLLM claims 90% of total VRAM for itself
