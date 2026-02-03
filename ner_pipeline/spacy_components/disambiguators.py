@@ -360,11 +360,12 @@ class LELATournamentDisambiguatorComponent:
     def _ensure_llm_loaded(self, progress_callback=None):
         """Load LLM on-demand if not already loaded."""
         if self.llm is None:
+            vllm, SamplingParams = _get_vllm()
+            
             if progress_callback:
                 progress_callback(0.0, f"Loading LLM model ({self.model_name.split('/')[-1]})...")
             
-            vllm, SamplingParams = _get_vllm()
-            self.llm = get_vllm_instance(
+            self.llm, was_cached = get_vllm_instance(
                 model_name=self.model_name,
                 tensor_parallel_size=self.tensor_parallel_size,
                 max_model_len=self.max_model_len,
@@ -372,7 +373,8 @@ class LELATournamentDisambiguatorComponent:
             self.sampling_params = SamplingParams(**self.generation_config)
             
             if progress_callback:
-                progress_callback(0.1, "LLM loaded, starting disambiguation...")
+                status = "Using cached LLM" if was_cached else "LLM loaded"
+                progress_callback(0.1, f"{status}, starting disambiguation...")
 
     def __call__(self, doc: Doc) -> Doc:
         """Disambiguate all entities in the document using tournament strategy."""
@@ -592,11 +594,12 @@ class LELAvLLMDisambiguatorComponent:
     def _ensure_llm_loaded(self, progress_callback=None):
         """Load LLM on-demand if not already loaded."""
         if self.llm is None:
+            vllm, SamplingParams = _get_vllm()
+            
             if progress_callback:
                 progress_callback(0.0, f"Loading LLM model ({self.model_name.split('/')[-1]})...")
             
-            vllm, SamplingParams = _get_vllm()
-            self.llm = get_vllm_instance(
+            self.llm, was_cached = get_vllm_instance(
                 model_name=self.model_name,
                 tensor_parallel_size=self.tensor_parallel_size,
                 max_model_len=self.max_model_len,
@@ -605,7 +608,8 @@ class LELAvLLMDisambiguatorComponent:
             self.sampling_params = SamplingParams(**sampling_config)
             
             if progress_callback:
-                progress_callback(0.1, "LLM loaded, starting disambiguation...")
+                status = "Using cached LLM" if was_cached else "LLM loaded"
+                progress_callback(0.1, f"{status}, starting disambiguation...")
 
     def __call__(self, doc: Doc) -> Doc:
         """Disambiguate all entities in the document."""

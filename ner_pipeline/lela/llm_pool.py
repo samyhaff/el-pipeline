@@ -125,12 +125,14 @@ def get_sentence_transformer_instance(
         estimated_vram_gb: Estimated VRAM needed for this model (for eviction decisions)
 
     Returns:
-        SentenceTransformer instance
+        Tuple of (SentenceTransformer instance, bool indicating if it was cached)
     """
     global _sentence_transformer_in_use
     key = f"{model_name}:{device or 'auto'}"
 
-    if key not in _sentence_transformer_instances:
+    was_cached = key in _sentence_transformer_instances
+
+    if not was_cached:
         # Check if we need to free memory before loading
         free_vram = _get_free_vram_gb()
         if free_vram < estimated_vram_gb:
@@ -153,10 +155,12 @@ def get_sentence_transformer_instance(
 
         _sentence_transformer_instances[key] = model
         logger.info(f"SentenceTransformer model loaded: {model_name}")
+    else:
+        logger.info(f"Reusing cached SentenceTransformer model: {model_name}")
 
     # Mark as in use
     _sentence_transformer_in_use.add(key)
-    return _sentence_transformer_instances[key]
+    return _sentence_transformer_instances[key], was_cached
 
 
 def release_sentence_transformer(model_name: str, device: Optional[str] = None):
@@ -288,12 +292,14 @@ def get_vllm_instance(
         **kwargs: Additional vLLM arguments
 
     Returns:
-        vLLM LLM instance
+        Tuple of (vLLM LLM instance, bool indicating if it was cached)
     """
     global _vllm_in_use
     key = f"{model_name}:tp{tensor_parallel_size}"
 
-    if key not in _vllm_instances:
+    was_cached = key in _vllm_instances
+
+    if not was_cached:
         # vLLM needs a lot of memory - evict ALL unused models first
         free_vram = _get_free_vram_gb()
         if free_vram < estimated_vram_gb:
@@ -316,10 +322,12 @@ def get_vllm_instance(
         logger.info(f"Loading vLLM model: {model_name}")
         _vllm_instances[key] = vllm.LLM(**llm_kwargs)
         logger.info(f"vLLM model loaded: {model_name}")
+    else:
+        logger.info(f"Reusing cached vLLM model: {model_name}")
 
     # Mark as in use
     _vllm_in_use.add(key)
-    return _vllm_instances[key]
+    return _vllm_instances[key], was_cached
 
 
 def release_vllm(model_name: str, tensor_parallel_size: int = 1):
@@ -378,3 +386,35 @@ def release_all_models():
     release_all_sentence_transformers()
     release_all_vllm()
     logger.info("All models marked as available for eviction")
+
+
+def is_sentence_transformer_cached(model_name: str, device: Optional[str] = None) -> bool:
+    """Check if a SentenceTransformer model is currently cached."""
+    key = f"{model_name}:{device or 'auto'}"
+    return key in _sentence_transformer_instances
+
+
+def is_vllm_cached(model_name: str, tensor_parallel_size: int = 1) -> bool:
+    """Check if a vLLM model is currently cached."""
+    key = f"{model_name}:tp{tensor_parallel_size}"
+    return key in _vllm_instances
+
+
+def get_cached_models_info() -> dict:
+    """
+    Get information about currently cached models.
+    
+    Returns:
+        Dict with 'sentence_transformers' and 'vllm' keys, each containing
+        a list of dicts with 'key' and 'in_use' fields.
+    """
+    return {
+        "sentence_transformers": [
+            {"key": key, "in_use": key in _sentence_transformer_in_use}
+            for key in _sentence_transformer_instances.keys()
+        ],
+        "vllm": [
+            {"key": key, "in_use": key in _vllm_in_use}
+            for key in _vllm_instances.keys()
+        ],
+    }

@@ -384,7 +384,7 @@ class LELADenseCandidatesComponent:
         logger.info(f"Building dense index over {len(self.entities)} entities")
 
         # Load model for embedding, then release after index is built
-        model = get_sentence_transformer_instance(self.model_name, self.device)
+        model, _ = get_sentence_transformer_instance(self.model_name, self.device)
         embeddings = model.encode(entity_texts, normalize_embeddings=True, convert_to_numpy=True)
         release_sentence_transformer(self.model_name, self.device)
 
@@ -432,10 +432,11 @@ class LELADenseCandidatesComponent:
             self.progress_callback(0.0, f"Loading embedding model ({self.model_name.split('/')[-1]})...")
 
         # Load model for this stage (will reuse cached if available)
-        model = get_sentence_transformer_instance(self.model_name, self.device)
+        model, was_cached = get_sentence_transformer_instance(self.model_name, self.device)
 
         if self.progress_callback:
-            self.progress_callback(0.1, "Model loaded, generating candidates...")
+            status = "Using cached model" if was_cached else "Model loaded"
+            self.progress_callback(0.1, f"{status}, generating candidates...")
 
         # Progress: 0.0-0.1 = model loading, 0.1-1.0 = processing entities
         processing_start = 0.1

@@ -834,6 +834,8 @@ def compute_memory_estimate(
 ) -> str:
     """Compute and format memory estimate for current configuration."""
     from ner_pipeline.lela.config import VLLM_GPU_MEMORY_UTILIZATION
+    from ner_pipeline.lela.llm_pool import get_cached_models_info
+    from ner_pipeline.knowledge_bases.custom import get_kb_cache_info
     
     try:
         resources = get_system_resources()
@@ -848,6 +850,27 @@ def compute_memory_estimate(
             lines.append(f"**Allocatable:** ~{allocatable:.1f}GB ({VLLM_GPU_MEMORY_UTILIZATION*100:.0f}% of free)")
         else:
             lines.append("**GPU:** Not available")
+
+        # Show cached models
+        cached_info = get_cached_models_info()
+        cached_models = []
+        for st_info in cached_info.get("sentence_transformers", []):
+            model_name = st_info["key"].split(":")[0].split("/")[-1]
+            status = "in use" if st_info["in_use"] else "cached"
+            cached_models.append(f"{model_name} ({status})")
+        for vllm_info in cached_info.get("vllm", []):
+            model_name = vllm_info["key"].split(":")[0].split("/")[-1]
+            status = "in use" if vllm_info["in_use"] else "cached"
+            cached_models.append(f"{model_name} ({status})")
+        
+        if cached_models:
+            lines.append(f"**Cached models:** {', '.join(cached_models)}")
+
+        # Show cached KBs
+        kb_cache_info = get_kb_cache_info()
+        if kb_cache_info:
+            kb_names = [f"{Path(kb['path']).name} ({kb['entity_count']:,} entities)" for kb in kb_cache_info]
+            lines.append(f"**Cached KBs:** {', '.join(kb_names)}")
 
         return "\n".join(lines)
 

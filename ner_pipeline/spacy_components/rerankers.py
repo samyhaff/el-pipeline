@@ -127,10 +127,11 @@ class LELAEmbedderRerankerComponent:
             self.progress_callback(0.0, f"Loading reranker model ({self.model_name.split('/')[-1]})...")
 
         # Load model for this stage (will reuse cached if available)
-        model = get_sentence_transformer_instance(self.model_name, self.device)
+        model, was_cached = get_sentence_transformer_instance(self.model_name, self.device)
 
         if self.progress_callback:
-            self.progress_callback(0.1, "Model loaded, reranking candidates...")
+            status = "Using cached model" if was_cached else "Model loaded"
+            self.progress_callback(0.1, f"{status}, reranking candidates...")
 
         # Progress: 0.0-0.1 = model loading, 0.1-1.0 = processing entities
         processing_start = 0.1

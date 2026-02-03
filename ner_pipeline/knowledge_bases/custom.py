@@ -5,7 +5,7 @@ import os
 import pickle
 import threading
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Any
 
 from rapidfuzz import process
 
@@ -14,6 +14,59 @@ from ner_pipeline.types import Entity
 from ner_pipeline.knowledge_bases.base import KnowledgeBase
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# In-Memory KB Cache
+# ============================================================================
+
+_kb_cache: Dict[str, "CustomJSONLKnowledgeBase"] = {}  # identity_hash -> KB instance
+
+
+def _compute_kb_identity_hash(path: str) -> str:
+    """Compute identity hash for a KB file (path + mtime + size)."""
+    stat = os.stat(path)
+    raw = f"kb:{path}:{stat.st_mtime}:{stat.st_size}".encode()
+    return hashlib.sha256(raw).hexdigest()
+
+
+def get_cached_kb(path: str) -> Optional["CustomJSONLKnowledgeBase"]:
+    """Get a KB from the in-memory cache if it exists and is still valid."""
+    try:
+        identity_hash = _compute_kb_identity_hash(path)
+        if identity_hash in _kb_cache:
+            logger.info(f"Reusing cached KB from memory: {path}")
+            return _kb_cache[identity_hash]
+    except Exception:
+        pass
+    return None
+
+
+def cache_kb(kb: "CustomJSONLKnowledgeBase") -> None:
+    """Add a KB to the in-memory cache."""
+    try:
+        _kb_cache[kb.identity_hash] = kb
+        logger.debug(f"KB cached in memory: {kb.source_path}")
+    except Exception as e:
+        logger.warning(f"Failed to cache KB in memory: {e}")
+
+
+def get_kb_cache_info() -> List[Dict[str, Any]]:
+    """Get information about currently cached KBs."""
+    return [
+        {
+            "path": kb.source_path,
+            "identity_hash": kb.identity_hash[:12],
+            "entity_count": len(kb.entities),
+        }
+        for kb in _kb_cache.values()
+    ]
+
+
+def clear_kb_cache() -> None:
+    """Clear the in-memory KB cache."""
+    _kb_cache.clear()
+    logger.info("KB cache cleared")
 
 
 @knowledge_bases.register("custom")
@@ -26,7 +79,28 @@ class CustomJSONLKnowledgeBase:
     - Simple format: {"title": "...", "description": "..."} (id defaults to title)
 
     The 'id' field is optional - if not provided, 'title' is used as the ID.
+    
+    Memory management:
+    - KBs are cached in memory and reused between pipeline runs
+    - Use get_cached_kb() to check if a KB is already loaded
+    - The cache is invalidated if the source file changes (mtime/size)
     """
+
+    def __new__(
+        cls,
+        path: str,
+        cache_dir: Optional[str] = None,
+        cancel_event: Optional[threading.Event] = None,
+        progress_callback: Optional[Callable[[float, str], None]] = None,
+    ):
+        # Check in-memory cache first
+        cached = get_cached_kb(path)
+        if cached is not None:
+            return cached
+        
+        # Create new instance
+        instance = super().__new__(cls)
+        return instance
 
     def __init__(
         self,
@@ -35,21 +109,30 @@ class CustomJSONLKnowledgeBase:
         cancel_event: Optional[threading.Event] = None,
         progress_callback: Optional[Callable[[float, str], None]] = None,
     ):
+        # Skip initialization if we got a cached instance
+        if hasattr(self, '_initialized') and self._initialized:
+            return
+        
         self.source_path = path
         self.entities: Dict[str, Entity] = {}  # Indexed by ID
         self.titles: List[str] = []
         self._cancel_event = cancel_event
         self._progress_callback = progress_callback
 
-        # Try loading from cache
+        # Try loading from disk cache
         if cache_dir and self._load_from_cache(cache_dir):
+            self._initialized = True
+            cache_kb(self)  # Add to in-memory cache
             return
 
         self._parse_jsonl(path)
 
-        # Save to cache
+        # Save to disk cache
         if cache_dir:
             self._save_to_cache(cache_dir)
+        
+        self._initialized = True
+        cache_kb(self)  # Add to in-memory cache
 
     def _check_cancelled(self):
         """Raise InterruptedError if cancellation was requested."""
