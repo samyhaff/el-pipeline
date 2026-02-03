@@ -626,8 +626,15 @@ def run_pipeline(
         def init_progress_callback(local_progress: float, description: str):
             actual_progress = 0.15 + local_progress * 0.2
             progress(actual_progress, desc=description)
+            # Check for cancellation during progress updates
+            if _cancel_event.is_set():
+                raise InterruptedError("Pipeline cancelled by user")
 
-        pipeline = NERPipeline(config, progress_callback=init_progress_callback)
+        pipeline = NERPipeline(config, progress_callback=init_progress_callback, cancel_event=_cancel_event)
+    except InterruptedError:
+        logger.info("Pipeline cancelled during initialization")
+        yield "", "*Pipeline cancelled.*", {}, no_tab_switch
+        return
     except Exception as e:
         logger.exception("Pipeline initialization failed")
         yield (*format_error_output("Pipeline Initialization Failed", str(e)), no_tab_switch)
@@ -1005,7 +1012,57 @@ if __name__ == "__main__":
     }
     """
 
-    with gr.Blocks(title="NER Pipeline", fill_height=True, css=custom_css) as demo:
+    # JavaScript to cancel pipeline when tab is closed (injected via head parameter)
+    custom_head = """
+    <script>
+    (function() {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupPageCloseHandler);
+        } else {
+            setupPageCloseHandler();
+        }
+        
+        function setupPageCloseHandler() {
+            console.log("NER Pipeline: Page close handler initialized");
+            
+            // Find the cancel button if visible (indicates pipeline is running)
+            function findCancelButton() {
+                const buttons = document.querySelectorAll('button');
+                for (const btn of buttons) {
+                    const text = btn.textContent.trim();
+                    if (text === 'Cancel' && btn.offsetParent !== null) {
+                        const style = window.getComputedStyle(btn);
+                        if (style.display !== 'none' && style.visibility !== 'hidden') {
+                            return btn;
+                        }
+                    }
+                }
+                return null;
+            }
+            
+            // Cancel pipeline when page is actually closing/navigating away
+            window.addEventListener('pagehide', function() {
+                const cancelBtn = findCancelButton();
+                if (cancelBtn) {
+                    cancelBtn.click();
+                    console.log("NER Pipeline: Triggered cancellation on pagehide");
+                }
+            }, { capture: true });
+            
+            // Backup: also try on beforeunload (fires earlier, more reliable for sending requests)
+            window.addEventListener('beforeunload', function() {
+                const cancelBtn = findCancelButton();
+                if (cancelBtn) {
+                    cancelBtn.click();
+                    console.log("NER Pipeline: Triggered cancellation on beforeunload");
+                }
+            }, { capture: true });
+        }
+    })();
+    </script>
+    """
+
+    with gr.Blocks(title="NER Pipeline", fill_height=True, head=custom_head) as demo:
         # State for storing full pipeline result (before confidence filtering)
         full_result_state = gr.State(value=None)
 
@@ -1413,4 +1470,4 @@ Test files are available in `data/test/`:
         )
 
     logger.info(f"Launching Gradio UI on port {args.port}...")
-    demo.launch(server_name="0.0.0.0", server_port=args.port, share=args.share)
+    demo.launch(server_name="0.0.0.0", server_port=args.port, share=args.share, css=custom_css)

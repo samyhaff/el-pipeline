@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import pickle
+import threading
 from pathlib import Path
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple
 
@@ -76,16 +77,24 @@ class NERPipeline:
         self,
         config: PipelineConfig,
         progress_callback: Optional[ProgressCallback] = None,
+        cancel_event: Optional[threading.Event] = None,
     ) -> None:
         self.config = config
         self.cache_dir = Path(config.cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self._cancel_event = cancel_event
 
         def report(progress: float, desc: str):
             if progress_callback:
                 progress_callback(progress, desc)
 
+        def check_cancelled():
+            if cancel_event and cancel_event.is_set():
+                raise InterruptedError("Pipeline initialization cancelled")
+
         report(0.0, "Loading knowledge base...")
+        check_cancelled()
+
         if config.knowledge_base is None:
             from ner_pipeline.knowledge_bases.yago_downloader import ensure_yago_kb
             path = ensure_yago_kb()
@@ -94,21 +103,31 @@ class NERPipeline:
         self.kb = None
         if config.knowledge_base:
             config.knowledge_base.params["cache_dir"] = str(self.cache_dir)
+            # Pass cancel_event and progress_callback to KB if it supports them
+            config.knowledge_base.params["cancel_event"] = cancel_event
+            config.knowledge_base.params["progress_callback"] = progress_callback
             kb_factory = knowledge_bases.get(config.knowledge_base.name)
-            self.kb = kb_factory(**config.knowledge_base.params)
+            # Filter params to only those the factory accepts
+            import inspect
+            sig = inspect.signature(kb_factory)
+            valid_params = {k: v for k, v in config.knowledge_base.params.items() if k in sig.parameters}
+            self.kb = kb_factory(**valid_params)
 
+        check_cancelled()
         report(0.15, "Initializing document loader...")
         loader_factory = loaders.get(config.loader.name)
         self.loader = loader_factory(**config.loader.params)
 
+        check_cancelled()
         # Build spaCy pipeline
         report(0.2, "Building spaCy pipeline...")
-        self.nlp = self._build_nlp_pipeline(config, progress_callback)
+        self.nlp = self._build_nlp_pipeline(config, progress_callback, cancel_event)
 
     def _build_nlp_pipeline(
         self,
         config: PipelineConfig,
         progress_callback: Optional[ProgressCallback] = None,
+        cancel_event: Optional[threading.Event] = None,
     ) -> Language:
         """
         Build spaCy pipeline from configuration.
@@ -116,6 +135,7 @@ class NERPipeline:
         Args:
             config: Pipeline configuration
             progress_callback: Optional callback for progress reporting
+            cancel_event: Optional event to check for cancellation
 
         Returns:
             Configured spaCy Language instance
@@ -124,10 +144,15 @@ class NERPipeline:
             if progress_callback:
                 progress_callback(progress, desc)
 
+        def check_cancelled():
+            if cancel_event and cancel_event.is_set():
+                raise InterruptedError("Pipeline initialization cancelled")
+
         # Start with blank English model
         nlp = spacy.blank("en")
 
         # Add NER component
+        check_cancelled()
         report(0.25, f"Loading NER model ({config.ner.name})...")
         ner_name = config.ner.name
         ner_params = dict(config.ner.params)
@@ -148,6 +173,7 @@ class NERPipeline:
             nlp.add_pipe(factory_name, config=ner_params)
 
         # Add candidate generation component
+        check_cancelled()
         report(0.45, f"Loading candidate generator ({config.candidate_generator.name})...")
         cand_name = config.candidate_generator.name
         cand_params = dict(config.candidate_generator.params)
@@ -160,6 +186,7 @@ class NERPipeline:
         if hasattr(cand_component, "initialize") and self.kb is not None:
             cand_component.initialize(self.kb, cache_dir=self.cache_dir)
 
+        check_cancelled()
         # Add reranker component
         if config.reranker and config.reranker.name != "none":
             report(0.6, f"Loading reranker ({config.reranker.name})...")
@@ -174,6 +201,7 @@ class NERPipeline:
             rerank_params = dict(config.reranker.params) if config.reranker else {}
             nlp.add_pipe("ner_pipeline_noop_reranker", config=rerank_params)
 
+        check_cancelled()
         # Add disambiguator component (optional)
         if config.disambiguator:
             report(0.75, f"Loading disambiguator ({config.disambiguator.name})...")
@@ -188,6 +216,7 @@ class NERPipeline:
             if hasattr(disamb_component, "initialize") and self.kb is not None:
                 disamb_component.initialize(self.kb)
 
+        check_cancelled()
         report(1.0, "Pipeline initialization complete")
         return nlp
 

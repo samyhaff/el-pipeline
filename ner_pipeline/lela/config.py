@@ -40,7 +40,7 @@ NOT_AN_ENTITY = "None"
 # vLLM settings
 DEFAULT_TENSOR_PARALLEL_SIZE = 1
 DEFAULT_MAX_MODEL_LEN = None
-VLLM_GPU_MEMORY_UTILIZATION = 0.9  # Fraction of GPU memory vLLM will use
+VLLM_GPU_MEMORY_UTILIZATION = 0.8  # Fraction of GPU memory vLLM will use (0.8 leaves headroom for loading)
 
 # Embedding task descriptions
 RETRIEVER_TASK = (
