@@ -70,7 +70,7 @@ def get_available_components() -> Dict[str, List[str]]:
         "loaders": ["text", "pdf", "docx", "html", "json", "jsonl"],
         "ner": ["simple", "spacy", "gliner", "transformers", "lela_gliner"],
         "candidates": ["fuzzy", "bm25", "lela_bm25", "lela_dense"],
-        "rerankers": ["none", "cross_encoder", "lela_embedder"],
+        "rerankers": ["none", "cross_encoder"],
         "disambiguators": available_disambiguators,
         "knowledge_bases": ["custom"],
     }
