@@ -948,7 +948,6 @@ def clear_outputs_for_new_run():
         "",
         "*Processing...*",
         None,
-        None,
         gr.update(visible=False),
         gr.update(visible=True),
         gr.Tabs(selected=1),
