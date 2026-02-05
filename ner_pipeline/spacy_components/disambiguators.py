@@ -251,9 +251,11 @@ class LELAvLLMDisambiguatorComponent:
         processing_start = 0.1
         processing_range = 0.9
 
-        for i, ent in enumerate(entities):
-            ent_text = ent.text[:25] + "..." if len(ent.text) > 25 else ent.text
-            base_progress = processing_start + (i / num_entities) * processing_range
+        tokenizer = self.llm.get_tokenizer()
+        work_items = []
+
+        def make_reporter(idx: int, ent_text: str):
+            base_progress = processing_start + (idx / num_entities) * processing_range
             entity_progress_range = processing_range / num_entities
 
             def report_entity_progress(sub_progress: float, sub_desc: str):
@@ -261,8 +263,14 @@ class LELAvLLMDisambiguatorComponent:
                     progress = base_progress + sub_progress * entity_progress_range
                     self.progress_callback(
                         progress,
-                        f"Entity {i+1}/{num_entities} ({ent_text}): {sub_desc}",
+                        f"Entity {idx+1}/{num_entities} ({ent_text}): {sub_desc}",
                     )
+
+            return report_entity_progress
+
+        for i, ent in enumerate(entities):
+            ent_text = ent.text[:25] + "..." if len(ent.text) > 25 else ent.text
+            report_entity_progress = make_reporter(i, ent_text)
 
             report_entity_progress(0.0, "checking candidates")
 
@@ -296,73 +304,106 @@ class LELAvLLMDisambiguatorComponent:
                 disable_thinking=self.disable_thinking,
             )
 
-            report_entity_progress(0.2, "calling LLM...")
+            prompt = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
 
-            try:
-                # Apply chat template manually for more control
-                tokenizer = self.llm.get_tokenizer()
-                prompt = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
+            if logger.isEnabledFor(logging.DEBUG):
                 for msg in messages:
                     logger.debug(f"[{msg['role']}] {msg['content']}")
                 logger.debug(f"Formatted prompt for '{ent.text}':\n{prompt}")
 
+            report_entity_progress(0.2, "queued for LLM batch")
+
+            work_items.append(
+                {
+                    "ent": ent,
+                    "ent_text": ent.text,
+                    "candidates": candidates,
+                    "prompt": prompt,
+                    "report": report_entity_progress,
+                }
+            )
+
+        if not work_items:
+            self.progress_callback = None
+            return doc
+
+        batch_size = int(self.generation_config.get("batch_size", 8))
+        if batch_size <= 0:
+            batch_size = len(work_items)
+
+        total_batches = (len(work_items) + batch_size - 1) // batch_size
+
+        for batch_idx in range(total_batches):
+            start = batch_idx * batch_size
+            end = min(start + batch_size, len(work_items))
+            batch = work_items[start:end]
+            prompts = [item["prompt"] for item in batch]
+
+            for item in batch:
+                item["report"](
+                    0.2, f"calling LLM (batch {batch_idx+1}/{total_batches})"
+                )
+
+            try:
                 responses = self.llm.generate(
-                    [prompt],
+                    prompts,
                     sampling_params=self.sampling_params,
                     use_tqdm=False,
                 )
-                response = responses[0] if responses else None
             except Exception as e:
                 logger.error(f"LLM generation error: {e}")
                 continue
 
-            if response is None:
+            if not responses:
                 continue
 
-            report_entity_progress(0.9, "parsing LLM response")
+            for item, response in zip(batch, responses):
+                item["report"](0.9, "parsing LLM response")
 
-            try:
-                # Log the raw LLM output for debugging
-                raw_output = response.outputs[0].text if response.outputs else ""
-                logger.debug(f"LLM raw output for '{ent.text}': {raw_output}")
-
-                answer = self._apply_self_consistency(response.outputs)
-                logger.debug(
-                    f"Parsed answer: {answer} (from {len(candidates)} candidates)"
-                )
-
-                # Answer 0 means "None" if add_none_candidate is True, or parsing failed
-                if answer == 0:
+                try:
+                    # Log the raw LLM output for debugging
+                    raw_output = response.outputs[0].text if response.outputs else ""
                     logger.debug(
-                        f"Skipping entity '{ent.text}': answer was 0 (none or parse failure)"
+                        f"LLM raw output for '{item['ent_text']}': {raw_output}"
                     )
-                    continue
 
-                if 0 < answer <= len(candidates):
-                    selected = candidates[answer - 1]
-                    logger.debug(f"Selected candidate: '{selected.entity_id}'")
-                    entity = self.kb.get_entity(selected.entity_id)
-                    if entity:
-                        ent._.resolved_entity = entity
+                    answer = self._apply_self_consistency(response.outputs)
+                    logger.debug(
+                        f"Parsed answer: {answer} (from {len(item['candidates'])} candidates)"
+                    )
+
+                    # Answer 0 means "None" if add_none_candidate is True, or parsing failed
+                    if answer == 0:
                         logger.debug(
-                            f"Resolved '{ent.text}' to '{entity.title}' (id: {entity.id})"
+                            f"Skipping entity '{item['ent_text']}': answer was 0 (none or parse failure)"
                         )
-                    else:
-                        logger.warning(
-                            f"Entity not found in KB: '{selected.entity_id}'"
-                        )
-                else:
-                    logger.debug(
-                        f"Answer {answer} out of range for {len(candidates)} candidates"
-                    )
+                        continue
 
-            except Exception as e:
-                logger.error(f"Error processing LLM response: {e}")
-                continue
+                    if 0 < answer <= len(item["candidates"]):
+                        selected = item["candidates"][answer - 1]
+                        logger.debug(f"Selected candidate: '{selected.entity_id}'")
+                        entity = self.kb.get_entity(selected.entity_id)
+                        if entity:
+                            item["ent"]._.resolved_entity = entity
+                            logger.debug(
+                                f"Resolved '{item['ent_text']}' to '{entity.title}' (id: {entity.id})"
+                            )
+                        else:
+                            logger.warning(
+                                f"Entity not found in KB: '{selected.entity_id}'"
+                            )
+                    else:
+                        logger.debug(
+                            f"Answer {answer} out of range for {len(item['candidates'])} candidates"
+                        )
+
+                except Exception as e:
+                    logger.error(f"Error processing LLM response: {e}")
+                    continue
 
         # Release LLM - stays cached but can be evicted if memory needed
         release_vllm(self.model_name, self.tensor_parallel_size)
