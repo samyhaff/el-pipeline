@@ -331,7 +331,7 @@ class LELAvLLMDisambiguatorComponent:
             self.progress_callback = None
             return doc
 
-        batch_size = int(self.generation_config.get("batch_size", 8))
+        batch_size = int(self.generation_config.get("batch_size", 0))
         if batch_size <= 0:
             batch_size = len(work_items)
 
@@ -608,7 +608,7 @@ class LELATransformersDisambiguatorComponent:
                     outputs = self.model.generate(
                         **inputs,
                         max_new_tokens=self.generation_config.get("max_tokens", 2048),
-                        temperature=self.generation_config.get("temperature", 0.1),
+                        temperature=self.generation_config.get("temperature", None),
                         do_sample=True,
                         pad_token_id=self.tokenizer.eos_token_id,
                     )
