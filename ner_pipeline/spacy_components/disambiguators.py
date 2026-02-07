@@ -431,7 +431,6 @@ class LELAvLLMDisambiguatorComponent:
         "add_descriptions": True,
         "disable_thinking": False,
         "system_prompt": None,
-        "generation_config": None,
         "self_consistency_k": 1,
     },
 )
@@ -445,7 +444,6 @@ def create_lela_openai_api_disambiguator_component(
     add_descriptions: bool,
     disable_thinking: bool,
     system_prompt: Optional[str],
-    generation_config: Optional[dict],
     self_consistency_k: int,
 ):
     """Factory for LELA OpenAI-compatible API disambiguator component."""
@@ -458,7 +456,6 @@ def create_lela_openai_api_disambiguator_component(
         add_descriptions=add_descriptions,
         disable_thinking=disable_thinking,
         system_prompt=system_prompt,
-        generation_config=generation_config,
         self_consistency_k=self_consistency_k,
     )
 
@@ -482,7 +479,6 @@ class LELAOpenAIAPIDisambiguatorComponent:
         add_descriptions: bool = True,
         disable_thinking: bool = False,
         system_prompt: Optional[str] = None,
-        # generation_config: Optional[dict] = None,
         self_consistency_k: int = 1,
     ):
         self.nlp = nlp
@@ -494,7 +490,6 @@ class LELAOpenAIAPIDisambiguatorComponent:
         self.disable_thinking = disable_thinking
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
         self.self_consistency_k = self_consistency_k
-        # self.generation_config = generation_config or DEFAULT_GENERATION_CONFIG
 
         _ensure_extensions()
 
