@@ -637,6 +637,7 @@ class LELAOpenAIAPIDisambiguatorComponent:
 
             payload = {
                 "messages": messages,
+                "n": self.self_consistency_k,
             }
             if self.model_name:
                 payload["model"] = self.model_name
