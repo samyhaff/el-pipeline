@@ -92,7 +92,7 @@ class CrossEncoderRerankerComponent:
         logger.info(f"Cross-encoder reranker initialized: {model_name}")
 
     def _format_query(self, text: str, start: int, end: int) -> str:
-        prefix = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n'
+        prefix = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
         marked_text = (
             f"{text[:start]}{SPAN_OPEN}{text[start:end]}{SPAN_CLOSE}{text[end:]}"
         )
@@ -198,7 +198,7 @@ def create_vllm_api_client_reranker_component(
 
 
 class VLLMAPIClientReranker:
-    PREFIX = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n'
+    PREFIX = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
     SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
     QUERY_TEMPLATE = "{prefix}<Instruct>: {instruction}\n<Query>: {query}\n"
     DOCUMENT_TEMPLATE = "<Document>: {doc}{suffix}"
@@ -260,9 +260,7 @@ class VLLMAPIClientReranker:
                     )
                     # Keep original candidates if API fails
                     ent._.candidates = candidates[: self.top_k]
-                    ent._.candidate_scores = [
-                        c.score for c in candidates[: self.top_k]
-                    ]
+                    ent._.candidate_scores = [c.score for c in candidates[: self.top_k]]
                     continue
 
                 scores = [d["score"] for d in response["data"]]
@@ -321,6 +319,7 @@ class NoOpRerankerComponent:
         for ent in doc.ents:
             candidates = getattr(ent._, "candidates", [])
             if candidates and len(candidates) > self.top_k:
+                ent._.candidates = candidates[: self.top_k]
         return doc
 
 
@@ -414,9 +413,7 @@ class LlamaServerReranker:
                     )
                     # Keep original candidates if API fails
                     ent._.candidates = candidates[: self.top_k]
-                    ent._.candidate_scores = [
-                        c.score for c in candidates[: self.top_k]
-                    ]
+                    ent._.candidate_scores = [c.score for c in candidates[: self.top_k]]
                     continue
 
                 results = response["results"]
