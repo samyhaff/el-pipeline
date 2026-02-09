@@ -40,8 +40,9 @@ DESCRIPTION = """
 
 LOGO = """
 <div style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-top: 40px;">
-    <img src="https://www.telecom-paris.fr/wp-content-EvDsK19/uploads/2024/01/logo_telecom_ipparis_rvb_fond_h-768x359.png" alt="spaCy Logo" style="height: 80px;">
-    <img src="https://www.ip-paris.fr/sites/default/files/image002.png" alt="spaCy Logo" style="height: 80px;">
+    <img src="https://www.telecom-paris.fr/wp-content-EvDsK19/uploads/2024/01/logo_telecom_ipparis_rvb_fond_h-768x359.png" alt="Telecom Paris Logo" style="height: 80px;">
+    <img src="https://www.ip-paris.fr/sites/default/files/image002.png" alt="IP Paris Logo" style="height: 80px;">
+    <img src="https://yago-knowledge.org/assets/images/logo.png" alt="YAGO Logo" style="height: 80px;">
 </div>
 """
 
