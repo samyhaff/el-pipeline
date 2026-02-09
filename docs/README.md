@@ -75,7 +75,9 @@ The pipeline uses spaCy's component system where each stage is a registered fact
 │                              ▼                                │
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │  Reranker (ent._.candidates reordered)                  │  │
-│  │  Factories: el_pipeline_lela_embedder_reranker,        │  │
+│  │  Factories: el_pipeline_lela_embedder_transformers_reranker, │  │
+│  │             _lela_embedder_vllm_reranker,                │  │
+│  │             _lela_cross_encoder_vllm_reranker,           │  │
 │  │             _cross_encoder_reranker, _noop_reranker     │  │
 │  └─────────────────────────────────────────────────────────┘  │
 │                              │                                │

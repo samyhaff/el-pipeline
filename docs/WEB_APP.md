@@ -199,6 +199,27 @@ Each NER option maps to a spaCy pipeline factory:
 - Reranks using cosine similarity with marked mention
 - Uses SentenceTransformer for local embedding computation
 
+#### LELA Embedder (Transformers)
+- **spaCy Factory:** `el_pipeline_lela_embedder_transformers_reranker`
+- **Embedding Model**: Selectable from dropdown
+- **top_k**: Number of candidates to keep
+- Bi-encoder reranker using SentenceTransformers
+- Uses cosine similarity between query and candidate embeddings
+
+#### LELA Embedder (vLLM)
+- **spaCy Factory:** `el_pipeline_lela_embedder_vllm_reranker`
+- **Embedding Model**: Selectable from dropdown
+- **top_k**: Number of candidates to keep
+- Bi-encoder reranker using vLLM with task="embed"
+- Manual L2 normalization of embeddings
+
+#### LELA Cross-Encoder (vLLM)
+- **spaCy Factory:** `el_pipeline_lela_cross_encoder_vllm_reranker`
+- **model_name**: Cross-encoder model
+- **top_k**: Number of candidates to keep
+- Cross-encoder reranker using vLLM `.generate()` with logprobs
+- Uses Qwen3-Reranker prompt format with yes/no probabilities
+
 ### Disambiguation Options
 
 #### None

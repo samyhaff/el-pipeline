@@ -2,7 +2,12 @@
 spaCy reranker components for the EL pipeline.
 
 Provides factories and components for candidate reranking:
-- CrossEncoderRerankerComponent: Cross-encoder reranking
+- CrossEncoderRerankerComponent: Cross-encoder reranking (sentence-transformers)
+- VLLMAPIClientReranker: Cross-encoder via external vLLM API
+- LlamaServerReranker: Reranking via llama.cpp server
+- LELAEmbedderRerankerComponent: Embedding-based cosine similarity (SentenceTransformer)
+- LELAEmbedderVLLMRerankerComponent: Embedding-based cosine similarity (vLLM)
+- LELACrossEncoderVLLMRerankerComponent: Cross-encoder via vLLM generation with logprobs
 - NoOpRerankerComponent: Pass-through (no reranking)
 """
 
@@ -17,18 +22,41 @@ from spacy.tokens import Doc, Span
 from el_pipeline.lela.config import (
     RERANKER_TOP_K,
     DEFAULT_EMBEDDER_MODEL,
+    DEFAULT_VLLM_RERANKER_MODEL,
     RERANKER_TASK,
     SPAN_OPEN,
     SPAN_CLOSE,
+    CROSS_ENCODER_PREFIX,
+    CROSS_ENCODER_SUFFIX,
 )
 from el_pipeline.lela.llm_pool import (
     get_sentence_transformer_instance,
     release_sentence_transformer,
+    get_vllm_instance,
+    release_vllm,
 )
 from el_pipeline.utils import ensure_candidates_extension
 from el_pipeline.types import Candidate, ProgressCallback
 
 logger = logging.getLogger(__name__)
+
+# Lazy imports for vLLM
+_vllm = None
+
+
+def _get_vllm():
+    """Lazy import of vllm."""
+    global _vllm
+    if _vllm is None:
+        try:
+            import vllm
+            _vllm = vllm
+        except ImportError:
+            raise ImportError(
+                "vllm package required for vLLM reranker. "
+                "Install with: pip install vllm"
+            )
+    return _vllm
 
 
 # ============================================================================
@@ -464,5 +492,486 @@ class LlamaServerReranker:
                 # Keep original candidates on failure
                 ent._.candidates = candidates[: self.top_k]
                 ent._.candidate_scores = [c.score for c in candidates[: self.top_k]]
+        self.progress_callback = None
+        return doc
+
+
+# ============================================================================
+# LELA Embedder Reranker Component (SentenceTransformer)
+# ============================================================================
+
+
+@Language.factory(
+    "el_pipeline_lela_embedder_transformers_reranker",
+    default_config={
+        "model_name": DEFAULT_EMBEDDER_MODEL,
+        "top_k": RERANKER_TOP_K,
+        "device": None,
+    },
+)
+def create_lela_embedder_transformers_reranker_component(
+    nlp: Language,
+    name: str,
+    model_name: str,
+    top_k: int,
+    device: Optional[str],
+):
+    """Factory for LELA embedder reranker component."""
+    return LELAEmbedderRerankerComponent(
+        nlp=nlp,
+        model_name=model_name,
+        top_k=top_k,
+        device=device,
+    )
+
+
+class LELAEmbedderRerankerComponent:
+    """
+    Embedding-based reranker component for spaCy.
+
+    Uses SentenceTransformers to rerank candidates by cosine similarity.
+    The mention is marked in the document text with brackets for context.
+
+    Memory management: Model is loaded on-demand and released after use,
+    allowing it to be evicted if memory is needed for later stages.
+    """
+
+    def __init__(
+        self,
+        nlp: Language,
+        model_name: str = DEFAULT_EMBEDDER_MODEL,
+        top_k: int = RERANKER_TOP_K,
+        device: Optional[str] = None,
+    ):
+        self.nlp = nlp
+        self.model_name = model_name
+        self.top_k = top_k
+        self.device = device
+
+        ensure_candidates_extension()
+
+        self.progress_callback: Optional[ProgressCallback] = None
+
+        logger.info(f"LELA embedder reranker initialized: {model_name}")
+
+    def _embed_texts(self, texts: List[str], model) -> np.ndarray:
+        """Embed texts using the SentenceTransformer model."""
+        return model.encode(texts, normalize_embeddings=True, convert_to_numpy=True)
+
+    def _format_query(self, text: str, start: int, end: int) -> str:
+        """Format query with marked mention in text."""
+        marked_text = f"{text[:start]}{SPAN_OPEN}{text[start:end]}{SPAN_CLOSE}{text[end:]}"
+        return f"Instruct: {RERANKER_TASK}\nQuery: {marked_text}"
+
+    def _format_candidate(self, candidate: Candidate) -> str:
+        """Format candidate for embedding."""
+        if candidate.description:
+            return f"{candidate.entity_id}: {candidate.description}"
+        return candidate.entity_id
+
+    def __call__(self, doc: Doc) -> Doc:
+        """Rerank candidates for all entities in the document."""
+        text = doc.text
+        entities = list(doc.ents)
+        num_entities = len(entities)
+
+        needs_reranking = any(
+            len(getattr(ent._, "candidates", [])) > self.top_k
+            for ent in entities
+        )
+
+        if not needs_reranking:
+            return doc
+
+        if self.progress_callback:
+            self.progress_callback(0.0, f"Loading reranker model ({self.model_name.split('/')[-1]})...")
+
+        model, was_cached = get_sentence_transformer_instance(self.model_name, self.device)
+
+        if self.progress_callback:
+            status = "Using cached model" if was_cached else "Model loaded"
+            self.progress_callback(0.1, f"{status}, reranking candidates...")
+
+        processing_start = 0.1
+        processing_range = 0.9
+
+        try:
+            for i, ent in enumerate(entities):
+                if self.progress_callback and num_entities > 0:
+                    progress = processing_start + (i / num_entities) * processing_range
+                    ent_text = ent.text[:25] + "..." if len(ent.text) > 25 else ent.text
+                    self.progress_callback(progress, f"Reranking {i+1}/{num_entities}: {ent_text}")
+
+                candidates = getattr(ent._, "candidates", [])
+                if not candidates or len(candidates) <= self.top_k:
+                    continue
+
+                query_text = self._format_query(text, ent.start_char, ent.end_char)
+                candidate_texts = [self._format_candidate(c) for c in candidates]
+
+                all_texts = [query_text] + candidate_texts
+                embeddings = self._embed_texts(all_texts, model)
+
+                query_embedding = embeddings[0:1]
+                candidate_embeddings = embeddings[1:]
+                similarities = np.dot(candidate_embeddings, query_embedding.T).flatten()
+
+                scored_candidates = list(zip(candidates, similarities))
+                scored_candidates.sort(key=lambda x: x[1], reverse=True)
+                top_candidates = scored_candidates[:self.top_k]
+
+                reranked = []
+                reranked_scores = []
+                for candidate, score in top_candidates:
+                    reranked.append(Candidate(
+                        entity_id=candidate.entity_id,
+                        score=float(score),
+                        description=candidate.description,
+                    ))
+                    reranked_scores.append(float(score))
+
+                ent._.candidates = reranked
+                ent._.candidate_scores = reranked_scores
+
+                logger.debug(
+                    f"Reranked {len(candidates)} to {len(ent._.candidates)} for '{ent.text}'"
+                )
+        finally:
+            release_sentence_transformer(self.model_name, self.device)
+
+        self.progress_callback = None
+        return doc
+
+
+# ============================================================================
+# LELA Cross-Encoder vLLM Reranker Component
+# ============================================================================
+
+
+@Language.factory(
+    "el_pipeline_lela_cross_encoder_vllm_reranker",
+    default_config={
+        "model_name": DEFAULT_VLLM_RERANKER_MODEL,
+        "top_k": RERANKER_TOP_K,
+    },
+)
+def create_lela_cross_encoder_vllm_reranker_component(
+    nlp: Language,
+    name: str,
+    model_name: str,
+    top_k: int,
+):
+    """Factory for LELA cross-encoder vLLM reranker component."""
+    return LELACrossEncoderVLLMRerankerComponent(
+        nlp=nlp,
+        model_name=model_name,
+        top_k=top_k,
+    )
+
+
+class LELACrossEncoderVLLMRerankerComponent:
+    """
+    Cross-encoder reranker using vLLM generation with Qwen3-Reranker models.
+
+    The model generates "yes"/"no" for each query-document pair and the
+    probability of "yes" (from logprobs) is used as the relevance score.
+    Model is loaded on-demand and released after use.
+    """
+
+    def __init__(
+        self,
+        nlp: Language,
+        model_name: str = DEFAULT_VLLM_RERANKER_MODEL,
+        top_k: int = RERANKER_TOP_K,
+    ):
+        self.nlp = nlp
+        self.model_name = model_name
+        self.top_k = top_k
+
+        ensure_candidates_extension()
+
+        self.model = None
+        self.progress_callback: Optional[ProgressCallback] = None
+
+        logger.info(f"LELA cross-encoder vLLM reranker initialized: {model_name}")
+
+    def _format_prompt(self, text: str, start: int, end: int, candidate: Candidate) -> str:
+        """Format a complete cross-encoder prompt for one query-document pair."""
+        marked_text = f"{text[:start]}{SPAN_OPEN}{text[start:end]}{SPAN_CLOSE}{text[end:]}"
+        title = candidate.entity_id
+        doc_text = f"{title} ({candidate.description})" if candidate.description else title
+        return (
+            f"{CROSS_ENCODER_PREFIX}"
+            f"<Instruct>{RERANKER_TASK}\n"
+            f"<Query>{marked_text}\n"
+            f"<Document>{doc_text}"
+            f"{CROSS_ENCODER_SUFFIX}"
+        )
+
+    @staticmethod
+    def _extract_yes_probability(output) -> float:
+        """Extract P(yes) from generation logprobs as the relevance score."""
+        import math
+        generation = output.outputs[0]
+        if not generation.logprobs:
+            return 1.0 if generation.text.strip().lower() == "yes" else 0.0
+
+        token_logprobs = generation.logprobs[0]
+        yes_logprob = None
+        no_logprob = None
+        for logprob_obj in token_logprobs.values():
+            token = logprob_obj.decoded_token.strip().lower()
+            if token == "yes":
+                yes_logprob = logprob_obj.logprob
+            elif token == "no":
+                no_logprob = logprob_obj.logprob
+
+        if yes_logprob is not None and no_logprob is not None:
+            yes_exp = math.exp(yes_logprob)
+            no_exp = math.exp(no_logprob)
+            return yes_exp / (yes_exp + no_exp)
+        elif yes_logprob is not None:
+            return math.exp(yes_logprob)
+        else:
+            return 0.0
+
+    def _ensure_model_loaded(self, progress_callback=None):
+        """Load model on-demand if not already loaded."""
+        if self.model is None:
+            _get_vllm()
+
+            if progress_callback:
+                progress_callback(0.0, f"Loading reranker model ({self.model_name.split('/')[-1]})...")
+
+            self.model, was_cached = get_vllm_instance(
+                model_name=self.model_name,
+            )
+
+            if progress_callback:
+                status = "Using cached model" if was_cached else "Model loaded"
+                progress_callback(0.1, f"{status}, reranking candidates...")
+
+    def __call__(self, doc: Doc) -> Doc:
+        """Rerank candidates for all entities in the document."""
+        text = doc.text
+        entities = list(doc.ents)
+        num_entities = len(entities)
+
+        needs_reranking = any(
+            len(getattr(ent._, "candidates", [])) > self.top_k
+            for ent in entities
+        )
+
+        if not needs_reranking:
+            return doc
+
+        self._ensure_model_loaded(self.progress_callback)
+
+        vllm = _get_vllm()
+        sampling_params = vllm.SamplingParams(
+            max_tokens=1,
+            temperature=0.0,
+            logprobs=20,
+        )
+
+        processing_start = 0.1
+        processing_range = 0.9
+
+        try:
+            for i, ent in enumerate(entities):
+                if self.progress_callback and num_entities > 0:
+                    progress = processing_start + (i / num_entities) * processing_range
+                    ent_text = ent.text[:25] + "..." if len(ent.text) > 25 else ent.text
+                    self.progress_callback(progress, f"Reranking {i+1}/{num_entities}: {ent_text}")
+
+                candidates = getattr(ent._, "candidates", [])
+                if not candidates or len(candidates) <= self.top_k:
+                    continue
+
+                prompts = [
+                    self._format_prompt(text, ent.start_char, ent.end_char, c)
+                    for c in candidates
+                ]
+
+                outputs = self.model.generate(prompts, sampling_params=sampling_params)
+                scores = [self._extract_yes_probability(out) for out in outputs]
+
+                scored_candidates = list(zip(candidates, scores))
+                scored_candidates.sort(key=lambda x: x[1], reverse=True)
+                top_candidates = scored_candidates[:self.top_k]
+
+                reranked = []
+                reranked_scores = []
+                for candidate, score in top_candidates:
+                    reranked.append(Candidate(
+                        entity_id=candidate.entity_id,
+                        score=float(score),
+                        description=candidate.description,
+                    ))
+                    reranked_scores.append(float(score))
+
+                ent._.candidates = reranked
+                ent._.candidate_scores = reranked_scores
+
+                logger.debug(
+                    f"Cross-encoder (vLLM) reranked {len(candidates)} to {len(ent._.candidates)} for '{ent.text}'"
+                )
+        finally:
+            release_vllm(self.model_name)
+            self.model = None  # Drop reference so pool eviction can free GPU memory
+
+        self.progress_callback = None
+        return doc
+
+
+# ============================================================================
+# LELA Embedder vLLM Reranker Component
+# ============================================================================
+
+
+@Language.factory(
+    "el_pipeline_lela_embedder_vllm_reranker",
+    default_config={
+        "model_name": DEFAULT_EMBEDDER_MODEL,
+        "top_k": RERANKER_TOP_K,
+    },
+)
+def create_lela_embedder_vllm_reranker_component(
+    nlp: Language,
+    name: str,
+    model_name: str,
+    top_k: int,
+):
+    """Factory for LELA embedder vLLM reranker component."""
+    return LELAEmbedderVLLMRerankerComponent(
+        nlp=nlp,
+        model_name=model_name,
+        top_k=top_k,
+    )
+
+
+class LELAEmbedderVLLMRerankerComponent:
+    """
+    Embedding-based reranker using vLLM's .encode() API.
+
+    Same functionality as LELAEmbedderRerankerComponent but using vLLM
+    instead of SentenceTransformers for faster inference.
+    Model is loaded on-demand and released after use.
+    """
+
+    def __init__(
+        self,
+        nlp: Language,
+        model_name: str = DEFAULT_EMBEDDER_MODEL,
+        top_k: int = RERANKER_TOP_K,
+    ):
+        self.nlp = nlp
+        self.model_name = model_name
+        self.top_k = top_k
+
+        ensure_candidates_extension()
+
+        self.model = None
+        self.progress_callback: Optional[ProgressCallback] = None
+
+        logger.info(f"LELA embedder vLLM reranker initialized: {model_name}")
+
+    def _format_query(self, text: str, start: int, end: int) -> str:
+        """Format query with marked mention in text."""
+        marked_text = f"{text[:start]}{SPAN_OPEN}{text[start:end]}{SPAN_CLOSE}{text[end:]}"
+        return f"Instruct: {RERANKER_TASK}\nQuery: {marked_text}"
+
+    def _format_candidate(self, candidate: Candidate) -> str:
+        """Format candidate for embedding."""
+        if candidate.description:
+            return f"{candidate.entity_id}: {candidate.description}"
+        return candidate.entity_id
+
+    def _ensure_model_loaded(self, progress_callback=None):
+        """Load model on-demand if not already loaded."""
+        if self.model is None:
+            _get_vllm()
+
+            if progress_callback:
+                progress_callback(0.0, f"Loading reranker model ({self.model_name.split('/')[-1]})...")
+
+            self.model, was_cached = get_vllm_instance(
+                model_name=self.model_name,
+                task="embed",
+            )
+
+            if progress_callback:
+                status = "Using cached model" if was_cached else "Model loaded"
+                progress_callback(0.1, f"{status}, reranking candidates...")
+
+    def __call__(self, doc: Doc) -> Doc:
+        """Rerank candidates for all entities in the document."""
+        text = doc.text
+        entities = list(doc.ents)
+        num_entities = len(entities)
+
+        needs_reranking = any(
+            len(getattr(ent._, "candidates", [])) > self.top_k
+            for ent in entities
+        )
+
+        if not needs_reranking:
+            return doc
+
+        self._ensure_model_loaded(self.progress_callback)
+
+        processing_start = 0.1
+        processing_range = 0.9
+
+        try:
+            for i, ent in enumerate(entities):
+                if self.progress_callback and num_entities > 0:
+                    progress = processing_start + (i / num_entities) * processing_range
+                    ent_text = ent.text[:25] + "..." if len(ent.text) > 25 else ent.text
+                    self.progress_callback(progress, f"Reranking {i+1}/{num_entities}: {ent_text}")
+
+                candidates = getattr(ent._, "candidates", [])
+                if not candidates or len(candidates) <= self.top_k:
+                    continue
+
+                query_text = self._format_query(text, ent.start_char, ent.end_char)
+                candidate_texts = [self._format_candidate(c) for c in candidates]
+
+                all_texts = [query_text] + candidate_texts
+                outputs = self.model.encode(all_texts)
+
+                embeddings = np.array([out.outputs.embedding for out in outputs])
+                norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+                norms = np.where(norms == 0, 1, norms)
+                embeddings = embeddings / norms
+
+                query_embedding = embeddings[0:1]
+                candidate_embeddings = embeddings[1:]
+                similarities = np.dot(candidate_embeddings, query_embedding.T).flatten()
+
+                scored_candidates = list(zip(candidates, similarities))
+                scored_candidates.sort(key=lambda x: x[1], reverse=True)
+                top_candidates = scored_candidates[:self.top_k]
+
+                reranked = []
+                reranked_scores = []
+                for candidate, score in top_candidates:
+                    reranked.append(Candidate(
+                        entity_id=candidate.entity_id,
+                        score=float(score),
+                        description=candidate.description,
+                    ))
+                    reranked_scores.append(float(score))
+
+                ent._.candidates = reranked
+                ent._.candidate_scores = reranked_scores
+
+                logger.debug(
+                    f"Embedder (vLLM) reranked {len(candidates)} to {len(ent._.candidates)} for '{ent.text}'"
+                )
+        finally:
+            release_vllm(self.model_name, task="embed")
+            self.model = None  # Drop reference so pool eviction can free GPU memory
+
         self.progress_callback = None
         return doc

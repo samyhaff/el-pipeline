@@ -330,6 +330,37 @@ Embedding-based cosine similarity reranking with marked mentions.
 | `top_k` | int | 10 | Candidates to keep |
 | `device` | str | None | Device override (e.g., "cuda", "cpu") |
 
+#### `el_pipeline_lela_embedder_transformers_reranker`
+
+Bi-encoder reranker using SentenceTransformers. Uses cosine similarity between query and candidate embeddings.
+
+**Config Options:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_name` | str | LELA default | Embedding model |
+| `top_k` | int | 10 | Candidates to keep |
+| `device` | str | None | Device override (e.g., "cuda", "cpu") |
+
+#### `el_pipeline_lela_embedder_vllm_reranker`
+
+Bi-encoder reranker using vLLM with task="embed". Manual L2 normalization of embeddings.
+
+**Config Options:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_name` | str | LELA default | Embedding model |
+| `top_k` | int | 10 | Candidates to keep |
+
+#### `el_pipeline_lela_cross_encoder_vllm_reranker`
+
+Cross-encoder reranker using vLLM `.generate()` with logprobs. Uses Qwen3-Reranker prompt format with yes/no probabilities.
+
+**Config Options:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_name` | str | LELA default | Cross-encoder model |
+| `top_k` | int | 10 | Candidates to keep |
+
 #### `el_pipeline_cross_encoder_reranker`
 
 Cross-encoder reranking using sentence-transformers.
@@ -529,7 +560,9 @@ candidates = tuples_to_candidates(tuples_list)
 | `fuzzy` | `el_pipeline_fuzzy_candidates` |
 | `bm25` | `el_pipeline_bm25_candidates` |
 | **Rerankers** | |
-| `lela_embedder` | `el_pipeline_lela_embedder_reranker` |
+| `lela_embedder_transformers` | `el_pipeline_lela_embedder_transformers_reranker` |
+| `lela_embedder_vllm` | `el_pipeline_lela_embedder_vllm_reranker` |
+| `lela_cross_encoder_vllm` | `el_pipeline_lela_cross_encoder_vllm_reranker` |
 | `cross_encoder` | `el_pipeline_cross_encoder_reranker` |
 | `none` | `el_pipeline_noop_reranker` |
 | **Disambiguators** | |

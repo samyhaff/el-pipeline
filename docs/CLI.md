@@ -104,7 +104,9 @@ The configuration names map to spaCy component factories:
 | **Rerankers** | | |
 | `none` | `el_pipeline_noop_reranker` | No reranking |
 | `cross_encoder` | `el_pipeline_cross_encoder_reranker` | Cross-encoder |
-| `lela_embedder` | `el_pipeline_lela_embedder_reranker` | Embedding reranker |
+| `lela_embedder_transformers` | `el_pipeline_lela_embedder_transformers_reranker` | Bi-encoder (SentenceTransformers) |
+| `lela_embedder_vllm` | `el_pipeline_lela_embedder_vllm_reranker` | Bi-encoder (vLLM embed) |
+| `lela_cross_encoder_vllm` | `el_pipeline_lela_cross_encoder_vllm_reranker` | Cross-encoder (vLLM logprobs) |
 | **Disambiguators** | | |
 | `first` | `el_pipeline_first_disambiguator` | Select first |
 | `popularity` | `el_pipeline_popularity_disambiguator` | Select by score |

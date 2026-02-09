@@ -109,7 +109,9 @@ doc = nlp("Albert Einstein visited Paris.")
 | `lela_dense` | `el_pipeline_lela_dense_candidates` |
 | `fuzzy` | `el_pipeline_fuzzy_candidates` |
 | `bm25` | `el_pipeline_bm25_candidates` |
-| `lela_embedder` | `el_pipeline_lela_embedder_reranker` |
+| `lela_embedder_transformers` | `el_pipeline_lela_embedder_transformers_reranker` |
+| `lela_embedder_vllm` | `el_pipeline_lela_embedder_vllm_reranker` |
+| `lela_cross_encoder_vllm` | `el_pipeline_lela_cross_encoder_vllm_reranker` |
 | `cross_encoder` | `el_pipeline_cross_encoder_reranker` |
 | `none` | `el_pipeline_noop_reranker` |
 | `lela_vllm` | `el_pipeline_lela_vllm_disambiguator` |
@@ -368,6 +370,43 @@ retrieve the entity from the knowledge base that the marked mention
 refers to.
 Query: {marked_text}
 ```
+
+### LELAEmbedderTransformersRerankerComponent
+
+Bi-encoder reranker using SentenceTransformers. Uses cosine similarity between query and candidate embeddings.
+
+**Factory:** `el_pipeline_lela_embedder_transformers_reranker`
+
+**Config:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_name` | str | LELA default | Embedding model |
+| `top_k` | int | 10 | Candidates to keep |
+| `device` | str | None | Device override (e.g., "cuda", "cpu") |
+
+### LELAEmbedderVLLMRerankerComponent
+
+Bi-encoder reranker using vLLM with task="embed". Manual L2 normalization of embeddings.
+
+**Factory:** `el_pipeline_lela_embedder_vllm_reranker`
+
+**Config:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_name` | str | LELA default | Embedding model |
+| `top_k` | int | 10 | Candidates to keep |
+
+### LELACrossEncoderVLLMRerankerComponent
+
+Cross-encoder reranker using vLLM `.generate()` with logprobs. Uses Qwen3-Reranker prompt format with yes/no probabilities.
+
+**Factory:** `el_pipeline_lela_cross_encoder_vllm_reranker`
+
+**Config:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `model_name` | str | LELA default | Cross-encoder model |
+| `top_k` | int | 10 | Candidates to keep |
 
 ### CrossEncoderRerankerComponent
 

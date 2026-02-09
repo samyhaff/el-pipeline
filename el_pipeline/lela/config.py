@@ -33,6 +33,19 @@ AVAILABLE_CROSS_ENCODER_MODELS = [
     ("tomaarsen/Qwen3-Reranker-0.6B-seq-cls", "Qwen3-Reranker-0.6B (~2GB)", 2.0),
 ]
 
+# vLLM reranker models (standard Qwen3-Reranker, used with .generate() API)
+DEFAULT_VLLM_RERANKER_MODEL = "Qwen/Qwen3-Reranker-4B"
+AVAILABLE_VLLM_RERANKER_MODELS = [
+    ("Qwen/Qwen3-Reranker-0.6B", "Qwen3-Reranker-0.6B (~2GB)", 2.0),
+    ("Qwen/Qwen3-Reranker-4B", "Qwen3-Reranker-4B (~10GB)", 10.0),
+]
+
+# Qwen3-Reranker prompt templates (no colons after tags)
+CROSS_ENCODER_PREFIX = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
+CROSS_ENCODER_SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+CROSS_ENCODER_QUERY_TEMPLATE = "{prefix}<Instruct>{instruction}\n<Query>{query}{suffix}"
+CROSS_ENCODER_DOCUMENT_TEMPLATE = "<Document>{doc}{suffix}"
+
 # Retrieval settings
 CANDIDATES_TOP_K = 64
 RERANKER_TOP_K = 10
