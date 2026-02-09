@@ -77,9 +77,6 @@ def get_available_components() -> Dict[str, List[str]]:
     }
 
 
-
-
-
 GRAY_COLOR = "#D1D5DB"  # Tailwind gray-300 (light gray)
 
 # Color palette for consistent entity colors
@@ -361,7 +358,7 @@ def format_highlighted_text(
     result: Dict,
 ) -> Tuple[List[Tuple[str, Optional[str], Optional[Dict]]], Dict[str, str]]:
     """Convert pipeline result to highlighted format.
-    
+
     Returns (highlighted_data, color_map) for use with highlighted_to_html().
     Each highlighted item is (text, label, entity_info) where entity_info contains details for popup.
     """
@@ -758,12 +755,8 @@ def run_pipeline(
 
     logger.info("Calling format_highlighted_text...")
     sys.stderr.flush()
-    highlighted, color_map = format_highlighted_text(
-        result
-    )
-    logger.info(
-        f"format_highlighted_text done, got {len(highlighted)} segments"
-    )
+    highlighted, color_map = format_highlighted_text(result)
+    logger.info(f"format_highlighted_text done, got {len(highlighted)} segments")
     sys.stderr.flush()
 
     # Convert to HTML for the gr.HTML component (no legend for inline preview)
@@ -927,9 +920,6 @@ def compute_memory_estimate(
 
     except Exception as e:
         return f"*Could not estimate memory: {e}*"
-
-
-
 
 
 _run_counter = 0
@@ -1205,7 +1195,9 @@ if __name__ == "__main__":
                             label="Embedding Model",
                             visible=False,
                         )
-                        with gr.Group(visible=False) as lela_openai_api_dense_cand_params:
+                        with gr.Group(
+                            visible=False
+                        ) as lela_openai_api_dense_cand_params:
                             cand_api_base_url = gr.Textbox(
                                 label="Cand. OpenAI API Base URL",
                                 value="http://localhost:8001/v1",
@@ -1536,9 +1528,11 @@ Test files are available in `data/test/`:
             outputs=[cancel_btn],
         )
 
-
-
     logger.info(f"Launching Gradio UI on port {args.port}...")
     demo.launch(
-        server_name="0.0.0.0", server_port=args.port, share=args.share, css=custom_css
+        server_name="0.0.0.0",
+        server_port=args.port,
+        share=args.share,
+        css=custom_css,
+        theme=gr.themes.Default(primary_hue="green"),
     )
