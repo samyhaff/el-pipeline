@@ -61,15 +61,14 @@ The pipeline uses spaCy's component system where each stage is a registered fact
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │  NER Component (doc.ents populated)                     │  │
 │  │  Factories: el_pipeline_lela_gliner, _simple, _gliner, │  │
-│  │             or spaCy's built-in NER                     │  │
+│  │             or spaCy's built-in NER + _ner_filter       │  │
 │  └─────────────────────────────────────────────────────────┘  │
 │                              │                                │
 │                              ▼                                │
 │  ┌─────────────────────────────────────────────────────────┐  │
 │  │  Candidate Generator (ent._.candidates populated)       │  │
-│  │  Factories: el_pipeline_lela_bm25_candidates,          │  │
-│  │             _lela_dense_candidates, _fuzzy_candidates,  │  │
-│  │             _bm25_candidates                            │  │
+│  │  Factories: el_pipeline_lela_dense_candidates,          │  │
+│  │             _fuzzy_candidates, _bm25_candidates         │  │
 │  └─────────────────────────────────────────────────────────┘  │
 │                              │                                │
 │                              ▼                                │
@@ -86,8 +85,7 @@ The pipeline uses spaCy's component system where each stage is a registered fact
 │  │  Disambiguator (ent._.resolved_entity set)              │  │
 │  │  Factories: el_pipeline_lela_vllm_disambiguator,       │  │
 │  │             _lela_transformers_disambiguator,            │  │
-│  │             _first_disambiguator,                       │  │
-│  │             _popularity_disambiguator                   │  │
+│  │             _first_disambiguator                        │  │
 │  └─────────────────────────────────────────────────────────┘  │
 └───────────────────────────────────────────────────────────────┘
                                 │
@@ -106,6 +104,7 @@ The pipeline uses spaCy's custom extension system on `Span` objects:
 |-----------|------|-------------|
 | `ent._.context` | `str` | Surrounding context for the entity mention |
 | `ent._.candidates` | `List[Candidate]` | Candidate entities (each with `entity_id`, `score`, `description`) |
+| `ent._.candidate_scores` | `List[float]` | Candidate scores (parallel to candidates list) |
 | `ent._.resolved_entity` | `Entity` | The final resolved entity object |
 
 ## Project Structure
@@ -130,6 +129,7 @@ el-pipeline/
 │   │
 │   ├── loaders/               # Document input handlers (registry-based)
 │   ├── knowledge_bases/       # Entity knowledge bases (registry-based)
+│   ├── utils/                 # Shared utilities (extensions, span filtering)
 │   ├── lela/                  # LELA configuration and utilities
 │   └── scripts/               # Utility scripts
 │
@@ -231,7 +231,8 @@ python app.py --port 7860
   "candidate_generator": {"name": "fuzzy", "params": {"top_k": 10}},
   "reranker": {"name": "none"},
   "disambiguator": {"name": "first"},
-  "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}}
+  "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}},
+  "cache_dir": ".ner_cache"
 }
 ```
 
@@ -251,10 +252,10 @@ python app.py --port 7860
 
 ## Requirements
 
-- Python 3.10 (recommended; 3.13 has compatibility issues with vLLM)
-- spaCy 3.8+
+- Python 3.10 (recommended; 3.13 is not supported due to vLLM incompatibility)
+- spaCy 3.8.11
 - PyTorch 2.6.0+cu118
-- vLLM 0.8.5 (for LELA vLLM disambiguator)
+- vLLM 0.8.5 (for LELA vLLM disambiguator/reranker)
 - See `requirements.txt` for full dependency list
 
 ### GPU Support

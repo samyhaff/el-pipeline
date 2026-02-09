@@ -165,7 +165,7 @@ When building pipelines manually with spaCy:
 ```python
 import spacy
 from el_pipeline import spacy_components
-from el_pipeline.knowledge_bases.lela_jsonl import LELAJSONLKnowledgeBase
+from el_pipeline.knowledge_bases.custom import CustomJSONLKnowledgeBase
 
 nlp = spacy.blank("en")
 nlp.add_pipe("el_pipeline_simple")
@@ -173,7 +173,7 @@ cand = nlp.add_pipe("el_pipeline_fuzzy_candidates")
 disamb = nlp.add_pipe("el_pipeline_first_disambiguator")
 
 # Initialize with knowledge base
-kb = LELAJSONLKnowledgeBase(path="kb.jsonl")
+kb = CustomJSONLKnowledgeBase(path="kb.jsonl")
 cand.initialize(kb)
 disamb.initialize(kb)
 ```
@@ -190,7 +190,7 @@ When using `ELPipeline`, initialization is automatic.
    ```json
    {
      "ner": {
-       "name": "lela_gliner",
+       "name": "gliner",
        "params": {"threshold": 0.3}  // Try lowering from 0.5
      }
    }
@@ -260,11 +260,11 @@ Alternatively, use the `lela_transformers` disambiguator which uses HuggingFace 
    ```json
    {
      "candidate_generator": {
-       "name": "lela_bm25",
+       "name": "bm25",
        "params": {"top_k": 32}  // Instead of 64
      },
      "reranker": {
-       "name": "lela_embedder",
+       "name": "lela_embedder_transformers",
        "params": {"top_k": 5}  // Instead of 10
      }
    }
