@@ -31,8 +31,19 @@ from el_pipeline.lela.config import (
 DESCRIPTION = """
 # EL Pipeline 🔗
 
-Modular NER → candidate generation → rerank → disambiguation pipeline built on spaCy.
-Swap components, configure parameters, and test with your own knowledge bases.
+*Modular entity recognition and linking pipeline. Upload a knowledge base, enter text, configure the pipeline, and run.*"
+
+## Links
+- Repository: https://github.com/samyhaff/LELA
+- LELA Paper: https://arxiv.org/abs/2601.05192
+"""
+
+LOGO = """
+<div style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-top: 40px;">
+    <img src="https://www.telecom-paris.fr/wp-content-EvDsK19/uploads/2024/01/logo_telecom_ipparis_rvb_fond_h-768x359.png" alt="Telecom Paris Logo" style="height: 80px;">
+    <img src="https://www.ip-paris.fr/sites/default/files/image002.png" alt="IP Paris Logo" style="height: 80px;">
+    <img src="https://yago-knowledge.org/assets/images/logo.png" alt="YAGO Logo" style="height: 80px;">
+</div>
 """
 
 
@@ -75,9 +86,6 @@ def get_available_components() -> Dict[str, List[str]]:
         "disambiguators": available_disambiguators,
         "knowledge_bases": ["custom"],
     }
-
-
-
 
 
 GRAY_COLOR = "#D1D5DB"  # Tailwind gray-300 (light gray)
@@ -361,7 +369,7 @@ def format_highlighted_text(
     result: Dict,
 ) -> Tuple[List[Tuple[str, Optional[str], Optional[Dict]]], Dict[str, str]]:
     """Convert pipeline result to highlighted format.
-    
+
     Returns (highlighted_data, color_map) for use with highlighted_to_html().
     Each highlighted item is (text, label, entity_info) where entity_info contains details for popup.
     """
@@ -758,12 +766,8 @@ def run_pipeline(
 
     logger.info("Calling format_highlighted_text...")
     sys.stderr.flush()
-    highlighted, color_map = format_highlighted_text(
-        result
-    )
-    logger.info(
-        f"format_highlighted_text done, got {len(highlighted)} segments"
-    )
+    highlighted, color_map = format_highlighted_text(result)
+    logger.info(f"format_highlighted_text done, got {len(highlighted)} segments")
     sys.stderr.flush()
 
     # Convert to HTML for the gr.HTML component (no legend for inline preview)
@@ -929,9 +933,6 @@ def compute_memory_estimate(
         return f"*Could not estimate memory: {e}*"
 
 
-
-
-
 _run_counter = 0
 
 
@@ -1081,7 +1082,7 @@ if __name__ == "__main__":
     with gr.Blocks(title="EL Pipeline", fill_height=True, head=custom_head) as demo:
         gr.Markdown("# EL Pipeline", elem_classes=["main-header"])
         gr.Markdown(
-            "*Modular entity recognition and linking pipeline. Upload a knowledge base, enter text, configure the pipeline, and run.*",
+            DESCRIPTION,
             elem_classes=["subtitle"],
         )
 
@@ -1205,7 +1206,9 @@ if __name__ == "__main__":
                             label="Embedding Model",
                             visible=False,
                         )
-                        with gr.Group(visible=False) as lela_openai_api_dense_cand_params:
+                        with gr.Group(
+                            visible=False
+                        ) as lela_openai_api_dense_cand_params:
                             cand_api_base_url = gr.Textbox(
                                 label="Cand. OpenAI API Base URL",
                                 value="http://localhost:8001/v1",
@@ -1318,6 +1321,8 @@ if __name__ == "__main__":
                     value="custom",
                     visible=False,
                 )
+
+                gr.Markdown(LOGO)
 
             # ===== DOCUMENTATION TAB =====
             with gr.Tab("Help"):
@@ -1536,9 +1541,11 @@ Test files are available in `data/test/`:
             outputs=[cancel_btn],
         )
 
-
-
     logger.info(f"Launching Gradio UI on port {args.port}...")
     demo.launch(
-        server_name="0.0.0.0", server_port=args.port, share=args.share, css=custom_css
+        server_name="0.0.0.0",
+        server_port=args.port,
+        share=args.share,
+        css=custom_css,
+        theme=gr.themes.Default(primary_hue="green"),
     )
