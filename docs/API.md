@@ -510,8 +510,8 @@ candidate = Candidate(
 | `lela_embedder_vllm` | `el_pipeline_lela_embedder_vllm_reranker` |
 | `lela_cross_encoder_vllm` | `el_pipeline_lela_cross_encoder_vllm_reranker` |
 | `lela_cross_encoder` | `el_pipeline_lela_cross_encoder_reranker` |
-| `vllm_api_client` | `el_pipeline_vllm_api_client_reranker` |
-| `llama_server` | `el_pipeline_llama_server_reranker` |
+| `lela_vllm_api_client` | `el_pipeline_lela_vllm_api_client_reranker` |
+| `lela_llama_server` | `el_pipeline_lela_llama_server_reranker` |
 | `none` | `el_pipeline_noop_reranker` |
 | **Disambiguators** | |
 | `lela_vllm` | `el_pipeline_lela_vllm_disambiguator` |

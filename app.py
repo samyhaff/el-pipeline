@@ -85,8 +85,8 @@ def get_available_components() -> Dict[str, List[str]]:
         "rerankers": [
             "none",
             "lela_cross_encoder",
-            "vllm_api_client",
-            "llama_server",
+            "lela_vllm_api_client",
+            "lela_llama_server",
             "lela_embedder_transformers",
             "lela_embedder_vllm",
             "lela_cross_encoder_vllm",
@@ -663,7 +663,7 @@ def run_pipeline(
         reranker_params["model_name"] = reranker_cross_encoder_model
     if reranker_type == "lela_cross_encoder":
         reranker_params["model_name"] = reranker_cross_encoder_model
-    if reranker_type == "vllm_api_client":
+    if reranker_type == "lela_vllm_api_client":
         reranker_params["base_url"] = reranker_api_url
         reranker_params["port"] = reranker_api_port
 
@@ -907,7 +907,7 @@ def update_reranker_params(reranker_choice: str):
         "lela_embedder_transformers",
         "lela_embedder_vllm",
     )
-    show_vllm_api_client = reranker_choice in ("vllm_api_client", "llama_server")
+    show_lela_vllm_api_client = reranker_choice in ("lela_vllm_api_client", "lela_llama_server")
     # Use different model lists for vLLM vs transformers cross-encoder
     if reranker_choice == "lela_cross_encoder_vllm":
         ce_choices = [(m[1], m[0]) for m in VLLM_RERANKER_MODEL_CHOICES]
@@ -920,7 +920,7 @@ def update_reranker_params(reranker_choice: str):
             visible=show_cross_encoder_model, choices=ce_choices, value=ce_default
         ),
         gr.update(visible=show_embedding_model),
-        gr.update(visible=show_vllm_api_client),
+        gr.update(visible=show_lela_vllm_api_client),
     )
 
 
@@ -1436,7 +1436,7 @@ if __name__ == "__main__":
                             label="Embedding Model",
                             visible=False,
                         )
-                        with gr.Group(visible=False) as vllm_api_client_params:
+                        with gr.Group(visible=False) as lela_vllm_api_client_params:
                             reranker_api_url = gr.Textbox(
                                 label="Reranker API URL",
                                 value="http://localhost",
@@ -1676,7 +1676,7 @@ Test files are available in `data/test/`:
             outputs=[
                 reranker_cross_encoder_model,
                 reranker_embedding_model,
-                vllm_api_client_params,
+                lela_vllm_api_client_params,
             ],
         )
 
