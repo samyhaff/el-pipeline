@@ -190,19 +190,19 @@ def highlighted_to_html(
             if entity_info:
                 if entity_info.get("kb_title"):
                     popup_lines.append(
-                        f"<strong>{escape_js_string(entity_info['kb_title'])}</strong>"
+                        f"<strong style=&quot;color:#333;&quot;>{escape_js_string(entity_info['kb_title'])}</strong>"
                     )
                 if entity_info.get("kb_id"):
                     popup_lines.append(
-                        f"<em>ID: {escape_js_string(entity_info['kb_id'])}</em>"
+                        f"<em style=&quot;color:#555;&quot;>ID: {escape_js_string(entity_info['kb_id'])}</em>"
                     )
                 if entity_info.get("type"):
-                    popup_lines.append(f"Type: {escape_js_string(entity_info['type'])}")
+                    popup_lines.append(f"<span style=&quot;color:#333;&quot;>Type: {escape_js_string(entity_info['type'])}</span>")
                 if entity_info.get("mention") and entity_info.get(
                     "mention"
                 ) != entity_info.get("kb_title"):
                     popup_lines.append(
-                        f"Mention: &quot;{escape_js_string(entity_info['mention'])}&quot;"
+                        f"<span style=&quot;color:#333;&quot;>Mention: &quot;{escape_js_string(entity_info['mention'])}&quot;</span>"
                     )
                 if entity_info.get("kb_description"):
                     desc = entity_info["kb_description"]
@@ -279,16 +279,16 @@ def highlighted_to_html(
             if entity_info:
                 if entity_info.get("kb_title"):
                     popup_lines.append(
-                        f"<strong>{escape_js_string(entity_info['kb_title'])}</strong>"
+                        f"<strong style=&quot;color:#333;&quot;>{escape_js_string(entity_info['kb_title'])}</strong>"
                     )
                 if entity_info.get("kb_id"):
                     popup_lines.append(
-                        f"<em>ID: {escape_js_string(entity_info['kb_id'])}</em>"
+                        f"<em style=&quot;color:#555;&quot;>ID: {escape_js_string(entity_info['kb_id'])}</em>"
                     )
                 if entity_info.get("type"):
-                    popup_lines.append(f"Type: {escape_js_string(entity_info['type'])}")
+                    popup_lines.append(f"<span style=&quot;color:#333;&quot;>Type: {escape_js_string(entity_info['type'])}</span>")
                 # Show occurrence count for legend hover
-                popup_lines.append(f"Mentions: {count}")
+                popup_lines.append(f"<span style=&quot;color:#333;&quot;>Mentions: {count}</span>")
                 if entity_info.get("kb_description"):
                     desc = entity_info["kb_description"]
                     if len(desc) > 150:
@@ -344,6 +344,7 @@ def highlighted_to_html(
         f"display: none; "
         f"position: absolute; "
         f"background: white; "
+        f"color: #333; "
         f"border: 1px solid #ccc; "
         f"border-radius: 6px; "
         f"padding: 0.5em 0.75em; "
