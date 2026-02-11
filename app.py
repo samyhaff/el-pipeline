@@ -111,7 +111,6 @@ ENTITY_COLORS = [
     "#9467BD",  # Purple
     "#8C564B",  # Brown
     "#E377C2",  # Pink
-    "#7F7F7F",  # Gray
     "#BCBD22",  # Olive
     "#17BECF",  # Cyan
     "#AEC7E8",  # Light Blue
@@ -121,10 +120,11 @@ ENTITY_COLORS = [
     "#C5B0D5",  # Light Purple
     "#C49C94",  # Light Brown
     "#F7B6D2",  # Light Pink
-    "#C7C7C7",  # Light Gray
     "#DBDB8D",  # Light Olive
     "#9EDAE5",  # Light Cyan
 ]
+
+UNLINKED_COLOR = "#9E9E9E"  # Gray for entities not linked to KB
 
 
 ERROR_COLOR = "#DC2626"  # Tailwind red-600
@@ -134,6 +134,8 @@ def get_label_color(label: str) -> str:
     """Get consistent color for a label based on its hash."""
     if label == "ERROR":
         return ERROR_COLOR
+    if label.endswith("[NOT IN KB]"):
+        return UNLINKED_COLOR
     idx = hash(label) % len(ENTITY_COLORS)
     return ENTITY_COLORS[idx]
 
