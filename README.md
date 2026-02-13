@@ -7,7 +7,6 @@ Standalone, swappable NER → candidate generation → rerank → disambiguation
 **Requirements:** Python 3.10-3.12 (Python 3.13 is NOT supported due to vLLM), CUDA 12.x for GPU support
 
 ```bash
-cd lela
 python3.10 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
