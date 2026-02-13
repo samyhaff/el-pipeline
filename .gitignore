@@ -28,6 +28,11 @@ coverage.xml
 # Local data and cache
 .ner_cache/
 data/*
+!data/test/
+data/test/*
+!data/test/config_simple_fuzzy.json
+!data/test/config_full_pipeline.json
+!data/test/sample_doc.txt
 report/*
 
 # Logs / artifacts

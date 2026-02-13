@@ -31,8 +31,10 @@ class PipelineConfig:
             entry = data[section]
             return ComponentConfig(name=entry["name"], params=entry.get("params", {}))
 
+        loader = build("loader") or ComponentConfig(name="text")
+
         return PipelineConfig(
-            loader=build("loader"),  # type: ignore[arg-type]
+            loader=loader,
             ner=build("ner"),  # type: ignore[arg-type]
             candidate_generator=build("candidate_generator"),  # type: ignore[arg-type]
             reranker=build("reranker"),

@@ -1,0 +1,6 @@
+{
+  "ner": {"name": "simple"},
+  "candidate_generator": {"name": "fuzzy"},
+  "reranker": {"name": "none"},
+  "disambiguator": {"name": "first"}
+}
