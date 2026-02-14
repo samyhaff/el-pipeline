@@ -571,6 +571,7 @@ def run_pipeline(
     gliner_model: str,
     gliner_labels: str,
     gliner_threshold: float,
+    labels_from_kb: bool,
     simple_min_len: int,
     cand_type: str,
     cand_embedding_model: str,
@@ -662,6 +663,8 @@ def run_pipeline(
         ner_params["estimated_vram_gb"] = DEFAULT_GLINER_VRAM_GB
         if gliner_labels:
             ner_params["labels"] = [l.strip() for l in gliner_labels.split(",")]
+        if labels_from_kb:
+            ner_params["labels_from_kb"] = True
     elif ner_type == "simple":
         ner_params["min_len"] = simple_min_len
 
@@ -729,6 +732,18 @@ def run_pipeline(
             if disambig_type != "none"
             else None
         )
+
+    # Resolve labels_from_kb: extract entity types from KB and use as NER labels
+    if ner_params.get("labels_from_kb"):
+        try:
+            from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+            kb = CustomJSONLKnowledgeBase(kb_path)
+            kb_types = kb.get_entity_types()
+            if kb_types:
+                ner_params["labels"] = kb_types
+        except Exception as e:
+            logger.warning(f"Failed to extract entity types from KB: {e}")
+        del ner_params["labels_from_kb"]
 
     config_dict = {
         "loader": {"name": loader_type, "params": {}},
@@ -1532,6 +1547,10 @@ if __name__ == "__main__":
                             step=0.05,
                             label="Threshold",
                         )
+                        labels_from_kb = gr.Checkbox(
+                            label="Use KB entity types as labels",
+                            value=False,
+                        )
                     with gr.Group(visible=True) as simple_params:
                         simple_min_len = gr.Slider(
                             minimum=1,
@@ -1909,6 +1928,7 @@ if __name__ == "__main__":
                     gliner_model,
                     gliner_labels,
                     gliner_threshold,
+                    labels_from_kb,
                     simple_min_len,
                     cand_type,
                     cand_embedding_model,

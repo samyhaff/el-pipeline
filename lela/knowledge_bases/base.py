@@ -15,3 +15,6 @@ class KnowledgeBase(Protocol):
     def all_entities(self) -> Iterable[Entity]:
         ...
 
+    def get_entity_types(self) -> List[str]:
+        ...
+

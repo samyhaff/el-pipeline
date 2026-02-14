@@ -224,7 +224,8 @@ class CustomJSONLKnowledgeBase:
                     id=entity_id,
                     title=entity_title,
                     description=item.get("description"),
-                    metadata={k: v for k, v in item.items() if k not in {"id", "title", "description"}},
+                    type=item.get("type"),
+                    metadata={k: v for k, v in item.items() if k not in {"id", "title", "description", "type"}},
                 )
                 self.entities[entity.id] = entity
                 self.titles.append(entity.title)
@@ -251,4 +252,8 @@ class CustomJSONLKnowledgeBase:
 
     def all_entities(self) -> Iterable[Entity]:
         return self.entities.values()
+
+    def get_entity_types(self) -> List[str]:
+        """Return sorted unique non-None type values from all entities."""
+        return sorted({e.type for e in self.entities.values() if e.type is not None})
 

@@ -41,6 +41,7 @@ class Entity:
     id: str
     title: str
     description: Optional[str] = None
+    type: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
