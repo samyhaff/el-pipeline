@@ -46,7 +46,7 @@ Input Files → Loader → Documents → spaCy Pipeline → Serialization → Ou
 LELA uses spaCy's native component architecture:
 
 1. **Factory Registration**: All components are registered as spaCy factories on import
-2. **Pipeline Building**: `ELPipeline` creates a blank English `Language` and adds components
+2. **Pipeline Building**: `Lela` creates a blank English `Language` and adds components
 3. **Component Initialization**: Components requiring KB are initialized after being added
 4. **Document Processing**: Text is passed through `nlp(text)` which runs all components
 
@@ -89,8 +89,8 @@ nlp.add_pipe("lela_noop_reranker")
 disamb = nlp.add_pipe("lela_first_disambiguator")
 
 # Initialize components with KB
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
-kb = CustomJSONLKnowledgeBase(path="kb.jsonl")
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
+kb = JSONLKnowledgeBase(path="kb.jsonl")
 cand.initialize(kb)
 disamb.initialize(kb)
 
@@ -119,7 +119,7 @@ doc = nlp("Albert Einstein visited Paris.")
 | `lela_openai_api` | `lela_lela_openai_api_disambiguator` |
 | `first` | `lela_first_disambiguator` |
 
-**Note:** The `lela_lela_gliner` factory is registered and can be used directly with `nlp.add_pipe()`, but is not yet available as a config name through `ELPipeline`.
+**Note:** The `lela_lela_gliner` factory is registered and can be used directly with `nlp.add_pipe()`, but is not yet available as a config name through `Lela`.
 
 ---
 
@@ -500,9 +500,9 @@ Knowledge bases are registry-based (not spaCy components).
 
 **Location:** `lela/knowledge_bases/`
 
-### CustomJSONLKnowledgeBase
+### JSONLKnowledgeBase
 
-**Registration:** `custom`
+**Registration:** `jsonl`
 
 **Config:**
 | Parameter | Default | Description |

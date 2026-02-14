@@ -11,7 +11,7 @@ import spacy
 from spacy.tokens import Span
 
 from lela.types import Candidate, Document, Mention
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 
 class TestLELADenseCandidatesComponent:
@@ -35,8 +35,8 @@ class TestLELADenseCandidatesComponent:
         os.unlink(path)
 
     @pytest.fixture
-    def kb(self, temp_kb_file: str) -> CustomJSONLKnowledgeBase:
-        return CustomJSONLKnowledgeBase(path=temp_kb_file)
+    def kb(self, temp_kb_file: str) -> JSONLKnowledgeBase:
+        return JSONLKnowledgeBase(path=temp_kb_file)
 
     @pytest.fixture
     def sample_doc(self) -> Document:

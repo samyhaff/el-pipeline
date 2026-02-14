@@ -14,7 +14,7 @@ import spacy
 from spacy.tokens import Span
 
 from lela.types import Candidate, Entity
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 
 # Use a small, fast model for testing
@@ -231,8 +231,8 @@ class TestLELADenseCandidatesIntegration:
         os.unlink(path)
 
     @pytest.fixture
-    def kb(self, temp_kb_file: str) -> CustomJSONLKnowledgeBase:
-        return CustomJSONLKnowledgeBase(path=temp_kb_file)
+    def kb(self, temp_kb_file: str) -> JSONLKnowledgeBase:
+        return JSONLKnowledgeBase(path=temp_kb_file)
 
     def test_dense_candidates_returns_semantically_similar(self, nlp, kb):
         """Test that dense retrieval returns semantically similar candidates."""

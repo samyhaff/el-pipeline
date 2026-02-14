@@ -159,7 +159,7 @@ When building pipelines manually with spaCy:
 ```python
 import spacy
 from lela import spacy_components
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 nlp = spacy.blank("en")
 nlp.add_pipe("lela_simple")
@@ -167,12 +167,12 @@ cand = nlp.add_pipe("lela_fuzzy_candidates")
 disamb = nlp.add_pipe("lela_first_disambiguator")
 
 # Initialize with knowledge base
-kb = CustomJSONLKnowledgeBase(path="kb.jsonl")
+kb = JSONLKnowledgeBase(path="kb.jsonl")
 cand.initialize(kb)
 disamb.initialize(kb)
 ```
 
-When using `ELPipeline`, initialization is automatic.
+When using `Lela`, initialization is automatic.
 
 ---
 

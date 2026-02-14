@@ -2,8 +2,7 @@ import argparse
 import json
 from pathlib import Path
 
-from lela.config import PipelineConfig
-from lela.pipeline import ELPipeline
+from lela import Lela
 
 
 def main():
@@ -36,20 +35,17 @@ def main():
         kb_conf = config_data.get("knowledge_base", {})
         kb_path = kb_conf.get("params", {}).get("path")
         if kb_path:
-            from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+            from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
-            kb = CustomJSONLKnowledgeBase(kb_path)
+            kb = JSONLKnowledgeBase(kb_path)
             kb_types = kb.get_entity_types()
             if kb_types:
                 ner_params["labels"] = kb_types
         del ner_params["labels_from_kb"]
 
-    config = PipelineConfig.from_dict(config_data)
-
-    pipeline = ELPipeline(config)
-    pipeline.run(args.input, output_path=args.output)
+    lela = Lela(config_data)
+    lela.run(*args.input, output_path=args.output)
 
 
 if __name__ == "__main__":
     main()
-

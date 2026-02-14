@@ -39,7 +39,7 @@ If you encounter issues, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) 
   "candidate_generator": {"name": "bm25", "params": {}},
   "reranker": {"name": "none", "params": {}},
   "disambiguator": {"name": "popularity", "params": {}},
-  "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}},
+  "knowledge_base": {"name": "jsonl", "params": {"path": "kb.jsonl"}},
   "cache_dir": ".ner_cache",
   "batch_size": 1
 }
@@ -60,11 +60,17 @@ This uses the `simple` regex NER, fuzzy candidates, first-candidate disambiguati
 
 ## Python API
 ```python
-from lela import PipelineConfig, ELPipeline
+from lela import Lela
 
-config = PipelineConfig.from_json("config.json")
-pipeline = ELPipeline(config)
-results = pipeline.run(["docs/file1.txt"])
+# Load from a JSON config file path
+lela = Lela("config.json")
+results = lela.run("docs/file1.txt")
+
+# Or pass a dict directly
+import json
+config = json.load(open("config.json"))
+lela = Lela(config)
+results = lela.run("docs/file1.txt", "docs/file2.txt")
 ```
 
 ## Available components
@@ -73,7 +79,7 @@ results = pipeline.run(["docs/file1.txt"])
 - Candidate generators: `bm25`, `dense`, `fuzzy`
 - Rerankers: `cross_encoder`, `none`
 - Disambiguators: `popularity`, `first`, `llm`
-- Knowledge bases: `custom`, `wikipedia`, `wikidata`
+- Knowledge bases: `jsonl`, `wikipedia`, `wikidata`
 
 ## Data & configs
 - The `data/` directory is gitignored by default. Keep shareable configs in `data/configs/` (tracked).

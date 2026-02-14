@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 import spacy
 
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 from lela.types import Entity
 
 
@@ -36,8 +36,8 @@ class TestLELADenseCache:
         os.unlink(path)
 
     @pytest.fixture
-    def kb(self, temp_kb_file: str) -> CustomJSONLKnowledgeBase:
-        return CustomJSONLKnowledgeBase(path=temp_kb_file)
+    def kb(self, temp_kb_file: str) -> JSONLKnowledgeBase:
+        return JSONLKnowledgeBase(path=temp_kb_file)
 
     @pytest.fixture
     def cache_dir(self) -> str:
@@ -188,8 +188,8 @@ class TestBM25Cache:
         os.unlink(path)
 
     @pytest.fixture
-    def kb(self, temp_kb_file: str) -> CustomJSONLKnowledgeBase:
-        return CustomJSONLKnowledgeBase(path=temp_kb_file)
+    def kb(self, temp_kb_file: str) -> JSONLKnowledgeBase:
+        return JSONLKnowledgeBase(path=temp_kb_file)
 
     @pytest.fixture
     def cache_dir(self) -> str:
@@ -287,8 +287,8 @@ class TestFuzzyCache:
         os.unlink(path)
 
     @pytest.fixture
-    def kb(self, temp_kb_file: str) -> CustomJSONLKnowledgeBase:
-        return CustomJSONLKnowledgeBase(path=temp_kb_file)
+    def kb(self, temp_kb_file: str) -> JSONLKnowledgeBase:
+        return JSONLKnowledgeBase(path=temp_kb_file)
 
     @pytest.fixture
     def nlp(self):
@@ -341,7 +341,7 @@ class TestCacheInvalidation:
         path = self._make_kb_file(data_v1)
 
         try:
-            kb1 = CustomJSONLKnowledgeBase(path=path)
+            kb1 = JSONLKnowledgeBase(path=path)
             comp1 = BM25CandidatesComponent(nlp=nlp, top_k=5)
             comp1.initialize(kb1, cache_dir=Path(cache_dir))
             assert len(comp1.corpus) == 2
@@ -352,7 +352,7 @@ class TestCacheInvalidation:
             with open(path, "a") as f:
                 f.write(json.dumps({"title": "New Entity", "description": "Desc"}) + "\n")
 
-            kb2 = CustomJSONLKnowledgeBase(path=path)
+            kb2 = JSONLKnowledgeBase(path=path)
             comp2 = BM25CandidatesComponent(nlp=nlp, top_k=5)
             comp2.initialize(kb2, cache_dir=Path(cache_dir))
 

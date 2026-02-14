@@ -10,7 +10,7 @@ import spacy
 from spacy.tokens import Span
 
 from lela.types import Candidate, Document, Entity, Mention
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 
 class TestLELAvLLMDisambiguatorComponent:
@@ -34,8 +34,8 @@ class TestLELAvLLMDisambiguatorComponent:
         os.unlink(path)
 
     @pytest.fixture
-    def kb(self, temp_kb_file: str) -> CustomJSONLKnowledgeBase:
-        return CustomJSONLKnowledgeBase(path=temp_kb_file)
+    def kb(self, temp_kb_file: str) -> JSONLKnowledgeBase:
+        return JSONLKnowledgeBase(path=temp_kb_file)
 
     @pytest.fixture
     def sample_candidates(self) -> list[Candidate]:
@@ -338,7 +338,7 @@ class TestLELAvLLMDisambiguatorConfig:
             path = f.name
 
         try:
-            kb = CustomJSONLKnowledgeBase(path=path)
+            kb = JSONLKnowledgeBase(path=path)
 
             from lela.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
             from lela.utils import ensure_candidates_extension, ensure_resolved_entity_extension
@@ -382,7 +382,7 @@ class TestLELAvLLMDisambiguatorConfig:
             path = f.name
 
         try:
-            kb = CustomJSONLKnowledgeBase(path=path)
+            kb = JSONLKnowledgeBase(path=path)
 
             from lela.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
             from lela.utils import ensure_candidates_extension, ensure_resolved_entity_extension
@@ -419,7 +419,7 @@ class TestLELAvLLMDisambiguatorConfig:
             path = f.name
 
         try:
-            kb = CustomJSONLKnowledgeBase(path=path)
+            kb = JSONLKnowledgeBase(path=path)
 
             from lela.spacy_components.disambiguators import LELAvLLMDisambiguatorComponent
             nlp = spacy.blank("en")

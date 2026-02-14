@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # In-Memory KB Cache
 # ============================================================================
 
-_kb_cache: Dict[str, "CustomJSONLKnowledgeBase"] = {}  # identity_hash -> KB instance
+_kb_cache: Dict[str, "JSONLKnowledgeBase"] = {}  # identity_hash -> KB instance
 
 
 def _compute_kb_identity_hash(path: str) -> str:
@@ -30,7 +30,7 @@ def _compute_kb_identity_hash(path: str) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def get_cached_kb(path: str) -> Optional["CustomJSONLKnowledgeBase"]:
+def get_cached_kb(path: str) -> Optional["JSONLKnowledgeBase"]:
     """Get a KB from the in-memory cache if it exists and is still valid."""
     try:
         identity_hash = _compute_kb_identity_hash(path)
@@ -42,7 +42,7 @@ def get_cached_kb(path: str) -> Optional["CustomJSONLKnowledgeBase"]:
     return None
 
 
-def cache_kb(kb: "CustomJSONLKnowledgeBase") -> None:
+def cache_kb(kb: "JSONLKnowledgeBase") -> None:
     """Add a KB to the in-memory cache."""
     try:
         _kb_cache[kb.identity_hash] = kb
@@ -69,8 +69,8 @@ def clear_kb_cache() -> None:
     logger.info("KB cache cleared")
 
 
-@knowledge_bases.register("custom")
-class CustomJSONLKnowledgeBase:
+@knowledge_bases.register("jsonl")
+class JSONLKnowledgeBase:
     """
     Loads entities from a JSONL file.
 
@@ -79,7 +79,7 @@ class CustomJSONLKnowledgeBase:
     - Simple format: {"title": "...", "description": "..."} (id defaults to title)
 
     The 'id' field is optional - if not provided, 'title' is used as the ID.
-    
+
     Memory management:
     - KBs are cached in memory and reused between pipeline runs
     - Use get_cached_kb() to check if a KB is already loaded
@@ -97,7 +97,7 @@ class CustomJSONLKnowledgeBase:
         cached = get_cached_kb(path)
         if cached is not None:
             return cached
-        
+
         # Create new instance
         instance = super().__new__(cls)
         return instance
@@ -112,7 +112,7 @@ class CustomJSONLKnowledgeBase:
         # Skip initialization if we got a cached instance
         if hasattr(self, '_initialized') and self._initialized:
             return
-        
+
         self.source_path = path
         self.entities: Dict[str, Entity] = {}  # Indexed by ID
         self.titles: List[str] = []
@@ -130,7 +130,7 @@ class CustomJSONLKnowledgeBase:
         # Save to disk cache
         if cache_dir:
             self._save_to_cache(cache_dir)
-        
+
         self._initialized = True
         cache_kb(self)  # Add to in-memory cache
 
@@ -256,4 +256,3 @@ class CustomJSONLKnowledgeBase:
     def get_entity_types(self) -> List[str]:
         """Return sorted unique non-None type values from all entities."""
         return sorted({e.type for e in self.entities.values() if e.type is not None})
-

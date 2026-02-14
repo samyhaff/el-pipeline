@@ -14,8 +14,7 @@ import torch
 # Global cancellation event for cooperative cancellation
 _cancel_event = threading.Event()
 
-from lela.config import PipelineConfig
-from lela.pipeline import ELPipeline
+from lela import Lela
 from lela.memory import get_system_resources
 from lela.lela.config import (
     AVAILABLE_LLM_MODELS as LLM_MODEL_CHOICES,
@@ -102,7 +101,7 @@ def get_available_components() -> Dict[str, List[str]]:
             "lela_cross_encoder_vllm",
         ],
         "disambiguators": available_disambiguators,
-        "knowledge_bases": ["custom"],
+        "knowledge_bases": ["jsonl"],
     }
 
 
@@ -736,8 +735,8 @@ def run_pipeline(
     # Resolve labels_from_kb: extract entity types from KB and use as NER labels
     if ner_params.get("labels_from_kb"):
         try:
-            from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
-            kb = CustomJSONLKnowledgeBase(kb_path)
+            from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
+            kb = JSONLKnowledgeBase(kb_path)
             kb_types = kb.get_entity_types()
             if kb_types:
                 ner_params["labels"] = kb_types
@@ -766,16 +765,14 @@ def run_pipeline(
     yield gr.update(value=""), "*Initializing pipeline...*", {}, no_vis_change, no_btn_change, no_mode_change
 
     try:
-        config = PipelineConfig.from_dict(config_dict)
-
         def _init_pipeline(report):
             def init_progress_callback(local_progress: float, description: str):
                 report(0.15 + local_progress * 0.2, description)
                 if _cancel_event.is_set():
                     raise InterruptedError("Pipeline cancelled by user")
 
-            return ELPipeline(
-                config,
+            return Lela(
+                config_dict,
                 progress_callback=init_progress_callback,
                 cancel_event=_cancel_event,
             )
@@ -1052,7 +1049,7 @@ def update_loader_from_file(file: Optional[gr.File]):
 def compute_memory_estimate() -> str:
     """Show GPU info, cached models, and cached KBs."""
     from lela.lela.llm_pool import get_cached_models_info
-    from lela.knowledge_bases.custom import get_kb_cache_info
+    from lela.knowledge_bases.jsonl import get_kb_cache_info
 
     try:
         resources = get_system_resources()
@@ -1743,7 +1740,7 @@ if __name__ == "__main__":
         )
         kb_type = gr.Dropdown(
             choices=components["knowledge_bases"],
-            value="custom",
+            value="jsonl",
             visible=False,
         )
 

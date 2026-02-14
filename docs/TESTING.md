@@ -315,7 +315,7 @@ def test_simple_ner_context_extension(nlp_with_simple_ner):
 
 ```python
 from unittest.mock import Mock, patch
-from lela.pipeline import ELPipeline
+from lela import Lela
 
 
 def test_pipeline_with_mock_kb(minimal_config_dict):
@@ -410,7 +410,7 @@ def test_example(
         content = f.read()
     assert "Barack Obama" in content
 
-    # minimal_config_dict is ready for PipelineConfig.from_dict()
+    # minimal_config_dict is ready for Lela(config_dict)
     assert "ner" in minimal_config_dict
 ```
 

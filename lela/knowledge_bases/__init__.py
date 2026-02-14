@@ -1,3 +1,3 @@
 """Knowledge base adapters."""
 
-from .custom import CustomJSONLKnowledgeBase  # noqa: F401
+from .jsonl import JSONLKnowledgeBase  # noqa: F401
