@@ -16,7 +16,3 @@ __version__ = "0.2.0"
 from lela import spacy_components  # noqa: F401
 
 from .pipeline import Lela  # noqa: E402
-
-# Keep available for internal use and backward compatibility (not in __all__)
-from .config import PipelineConfig  # noqa: E402, F401
-from .pipeline import ELPipeline  # noqa: E402, F401
