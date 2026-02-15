@@ -143,16 +143,6 @@ VLLM_CONTEXT_LEN_STEP = 256
 DEFAULT_WEB_VLLM_CONTEXT_LEN = min(4096, DEFAULT_MAX_MODEL_LEN)
 
 
-def get_label_color(label: str) -> str:
-    """Get consistent color for a label based on its hash."""
-    if label == "ERROR":
-        return ERROR_COLOR
-    if label.endswith("[NOT IN KB]"):
-        return UNLINKED_COLOR
-    idx = hash(label) % len(ENTITY_COLORS)
-    return ENTITY_COLORS[idx]
-
-
 def highlighted_to_html(
     highlighted: List[Tuple[str, Optional[str], Optional[Dict]]],
     color_map: Dict[str, str],
@@ -409,9 +399,10 @@ def format_highlighted_text(
     if not entities:
         return [(text, None, None)], {}
 
-    # Process entities: build labels
+    # Process entities: build labels in first-seen order
     entity_data = []
-    labels = set()
+    label_order = []
+    label_set = set()
 
     for entity in entities:
         label_type = entity.get("label", "ENT")
@@ -420,10 +411,21 @@ def format_highlighted_text(
         else:
             label = f"{label_type} [NOT IN KB]"
         entity_data.append((entity, label))
-        labels.add(label)
+        if label not in label_set:
+            label_set.add(label)
+            label_order.append(label)
 
-    # Build color_map
-    color_map = {label: get_label_color(label) for label in labels}
+    # Build color_map: sequential palette assignment for maximum color diversity
+    color_map = {}
+    palette_idx = 0
+    for label in label_order:
+        if label == "ERROR":
+            color_map[label] = ERROR_COLOR
+        elif label.endswith("[NOT IN KB]"):
+            color_map[label] = UNLINKED_COLOR
+        else:
+            color_map[label] = ENTITY_COLORS[palette_idx % len(ENTITY_COLORS)]
+            palette_idx += 1
 
     # Sort by position for text reconstruction
     entity_data.sort(key=lambda x: x[0]["start"])

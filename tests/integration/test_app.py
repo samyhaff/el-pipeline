@@ -182,6 +182,21 @@ class TestFormatHighlightedText:
         assert color_map["PERSON: Barack Obama"].startswith("#")
         assert color_map["GPE: Germany"].startswith("#")
 
+    def test_colors_are_distinct_for_few_entities(self):
+        """Distinct labels get distinct colors when fewer labels than palette size."""
+        result = {
+            "text": "Albert Einstein was born in Germany. Marie Curie lived in France.",
+            "entities": [
+                {"text": "Albert Einstein", "start": 0, "end": 15, "label": "PERSON", "entity_title": "Albert Einstein"},
+                {"text": "Germany", "start": 28, "end": 35, "label": "GPE", "entity_title": "Germany"},
+                {"text": "Marie Curie", "start": 37, "end": 48, "label": "PERSON", "entity_title": "Marie Curie"},
+                {"text": "France", "start": 58, "end": 64, "label": "GPE", "entity_title": "France"},
+            ],
+        }
+        highlighted, color_map = format_highlighted_text(result)
+        linked_colors = [c for label, c in color_map.items() if not label.endswith("[NOT IN KB]")]
+        assert len(linked_colors) == len(set(linked_colors)), "Linked entity colors should all be distinct"
+
     def test_entity_info_contains_expected_fields(self):
         """Entity info dict contains expected fields for popup."""
         result = {
