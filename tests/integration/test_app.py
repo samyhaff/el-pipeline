@@ -344,6 +344,7 @@ class TestRunPipeline:
             gliner_model="urchade/gliner_large",
             gliner_labels="",
             gliner_threshold=0.5,
+            labels_from_kb=False,
             simple_min_len=3,
             cand_type="fuzzy",
             cand_embedding_model="Qwen/Qwen3-Embedding-4B",
@@ -367,7 +368,7 @@ class TestRunPipeline:
             disambig_max_model_len=4096,
             disambig_api_base_url="",
             disambig_api_key="",
-            kb_type="custom",
+            kb_type="jsonl",
             progress=mock_progress,
         )
         html_output, stats, result, _, _, _ = self._exhaust_generator(gen)
@@ -391,6 +392,7 @@ class TestRunPipeline:
             gliner_model="urchade/gliner_large",
             gliner_labels="",
             gliner_threshold=0.5,
+            labels_from_kb=False,
             simple_min_len=3,
             cand_type="fuzzy",
             cand_embedding_model="Qwen/Qwen3-Embedding-4B",
@@ -414,7 +416,7 @@ class TestRunPipeline:
             disambig_max_model_len=4096,
             disambig_api_base_url="",
             disambig_api_key="",
-            kb_type="custom",
+            kb_type="jsonl",
             progress=mock_progress,
         )
         output = self._exhaust_generator(gen)
@@ -433,6 +435,7 @@ class TestRunPipeline:
             gliner_model="urchade/gliner_large",
             gliner_labels="",
             gliner_threshold=0.5,
+            labels_from_kb=False,
             simple_min_len=3,
             cand_type="fuzzy",
             cand_embedding_model="Qwen/Qwen3-Embedding-4B",
@@ -456,7 +459,7 @@ class TestRunPipeline:
             disambig_max_model_len=4096,
             disambig_api_base_url="",
             disambig_api_key="",
-            kb_type="custom",
+            kb_type="jsonl",
             progress=mock_progress,
         )
         _, _, result, _, _, _ = self._exhaust_generator(gen)
@@ -478,6 +481,7 @@ class TestRunPipeline:
                 gliner_model="urchade/gliner_large",
                 gliner_labels="",
                 gliner_threshold=0.5,
+                labels_from_kb=False,
                 simple_min_len=3,
                 cand_type="fuzzy",
                 cand_embedding_model="Qwen/Qwen3-Embedding-4B",
@@ -501,7 +505,7 @@ class TestRunPipeline:
                 disambig_max_model_len=4096,
                 disambig_api_base_url="",
                 disambig_api_key="",
-                kb_type="custom",
+                kb_type="jsonl",
                 progress=mock_progress,
             )
             html_output, stats, result, _, _, _ = self._exhaust_generator(gen)
@@ -520,6 +524,7 @@ class TestRunPipeline:
             gliner_model="urchade/gliner_large",
             gliner_labels="",
             gliner_threshold=0.5,
+            labels_from_kb=False,
             simple_min_len=3,
             cand_type="fuzzy",
             cand_embedding_model="Qwen/Qwen3-Embedding-4B",
@@ -543,7 +548,7 @@ class TestRunPipeline:
             disambig_max_model_len=4096,
             disambig_api_base_url="",
             disambig_api_key="",
-            kb_type="custom",
+            kb_type="jsonl",
             progress=mock_progress,
         )
         html_output, stats, result, _, _, _ = self._exhaust_generator(gen)
@@ -563,6 +568,7 @@ class TestRunPipeline:
             gliner_model="urchade/gliner_large",
             gliner_labels="",
             gliner_threshold=0.5,
+            labels_from_kb=False,
             simple_min_len=3,
             cand_type="fuzzy",
             cand_embedding_model="Qwen/Qwen3-Embedding-4B",
@@ -586,7 +592,7 @@ class TestRunPipeline:
             disambig_max_model_len=4096,
             disambig_api_base_url="",
             disambig_api_key="",
-            kb_type="custom",
+            kb_type="jsonl",
             progress=mock_progress,
         )
         html_output, _, _, _, _, _ = self._exhaust_generator(gen)

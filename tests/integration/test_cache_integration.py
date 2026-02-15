@@ -7,8 +7,7 @@ import time
 
 import pytest
 
-from lela.config import PipelineConfig
-from lela.pipeline import ELPipeline
+from lela import Lela
 from lela.types import Document
 
 
@@ -23,7 +22,7 @@ class TestPipelineCacheDirWiring:
             "ner": {"name": "simple", "params": {"min_len": 3}},
             "candidate_generator": {"name": "fuzzy", "params": {"top_k": 5}},
             "disambiguator": {"name": "first"},
-            "knowledge_base": {"name": "custom", "params": {"path": temp_jsonl_kb}},
+            "knowledge_base": {"name": "jsonl", "params": {"path": temp_jsonl_kb}},
             "cache_dir": temp_cache_dir,
         }
 
@@ -31,12 +30,11 @@ class TestPipelineCacheDirWiring:
         self, config_dict: dict, temp_cache_dir: str
     ):
         """KB receives cache_dir and creates kb/ cache subdirectory."""
-        config = PipelineConfig.from_dict(config_dict)
-        pipeline = ELPipeline(config)
+        lela = Lela(config_dict)
 
-        assert pipeline.kb is not None
-        assert hasattr(pipeline.kb, "source_path")
-        assert hasattr(pipeline.kb, "identity_hash")
+        assert lela.kb is not None
+        assert hasattr(lela.kb, "source_path")
+        assert hasattr(lela.kb, "identity_hash")
 
         # KB cache should exist
         kb_cache_dir = os.path.join(temp_cache_dir, "kb")
@@ -49,13 +47,11 @@ class TestPipelineCacheDirWiring:
         self, config_dict: dict, temp_cache_dir: str
     ):
         """Second pipeline init uses KB cache (produces identical entities)."""
-        config1 = PipelineConfig.from_dict(config_dict)
-        pipeline1 = ELPipeline(config1)
-        entities1 = {e.id: e.title for e in pipeline1.kb.all_entities()}
+        lela1 = Lela(config_dict)
+        entities1 = {e.id: e.title for e in lela1.kb.all_entities()}
 
-        config2 = PipelineConfig.from_dict(config_dict)
-        pipeline2 = ELPipeline(config2)
-        entities2 = {e.id: e.title for e in pipeline2.kb.all_entities()}
+        lela2 = Lela(config_dict)
+        entities2 = {e.id: e.title for e in lela2.kb.all_entities()}
 
         assert entities1 == entities2
 
@@ -63,14 +59,12 @@ class TestPipelineCacheDirWiring:
         self, config_dict: dict
     ):
         """Pipeline produces identical results on cold and warm runs."""
-        config1 = PipelineConfig.from_dict(config_dict)
-        pipeline1 = ELPipeline(config1)
+        lela1 = Lela(config_dict)
         doc = Document(id="test", text="Barack Obama visited New York City yesterday.")
-        result1 = pipeline1.process_document(doc)
+        result1 = lela1.process_document(doc)
 
-        config2 = PipelineConfig.from_dict(config_dict)
-        pipeline2 = ELPipeline(config2)
-        result2 = pipeline2.process_document(doc)
+        lela2 = Lela(config_dict)
+        result2 = lela2.process_document(doc)
 
         assert result1["text"] == result2["text"]
         assert len(result1["entities"]) == len(result2["entities"])
@@ -103,14 +97,13 @@ class TestKBCacheInvalidationIntegration:
                 "loader": {"name": "text"},
                 "ner": {"name": "simple", "params": {"min_len": 3}},
                 "candidate_generator": {"name": "fuzzy", "params": {"top_k": 5}},
-                "knowledge_base": {"name": "custom", "params": {"path": kb_path}},
+                "knowledge_base": {"name": "jsonl", "params": {"path": kb_path}},
                 "cache_dir": temp_cache_dir,
             }
 
             # First run
-            config1 = PipelineConfig.from_dict(config_dict)
-            pipeline1 = ELPipeline(config1)
-            assert len(list(pipeline1.kb.all_entities())) == 2
+            lela1 = Lela(config_dict)
+            assert len(list(lela1.kb.all_entities())) == 2
 
             # Modify file
             time.sleep(0.05)
@@ -121,30 +114,28 @@ class TestKBCacheInvalidationIntegration:
                 )
 
             # Second run - should see new entity
-            config2 = PipelineConfig.from_dict(config_dict)
-            pipeline2 = ELPipeline(config2)
-            assert len(list(pipeline2.kb.all_entities())) == 3
-            assert pipeline2.kb.get_entity("Q3") is not None
+            lela2 = Lela(config_dict)
+            assert len(list(lela2.kb.all_entities())) == 3
+            assert lela2.kb.get_entity("Q3") is not None
         finally:
             os.unlink(kb_path)
 
     def test_clean_cache_rebuilds(self, temp_cache_dir: str, temp_jsonl_kb: str):
         """Deleting the cache directory forces rebuild."""
         import shutil
-        from lela.knowledge_bases.custom import clear_kb_cache
+        from lela.knowledge_bases.jsonl import clear_kb_cache
 
         config_dict = {
             "loader": {"name": "text"},
             "ner": {"name": "simple", "params": {"min_len": 3}},
             "candidate_generator": {"name": "fuzzy", "params": {"top_k": 5}},
-            "knowledge_base": {"name": "custom", "params": {"path": temp_jsonl_kb}},
+            "knowledge_base": {"name": "jsonl", "params": {"path": temp_jsonl_kb}},
             "cache_dir": temp_cache_dir,
         }
 
         # Build cache
-        config1 = PipelineConfig.from_dict(config_dict)
-        pipeline1 = ELPipeline(config1)
-        count1 = len(list(pipeline1.kb.all_entities()))
+        lela1 = Lela(config_dict)
+        count1 = len(list(lela1.kb.all_entities()))
 
         # Delete cache contents and clear in-memory cache so rebuild is triggered
         kb_cache = os.path.join(temp_cache_dir, "kb")
@@ -153,9 +144,8 @@ class TestKBCacheInvalidationIntegration:
         clear_kb_cache()
 
         # Rebuild
-        config2 = PipelineConfig.from_dict(config_dict)
-        pipeline2 = ELPipeline(config2)
-        count2 = len(list(pipeline2.kb.all_entities()))
+        lela2 = Lela(config_dict)
+        count2 = len(list(lela2.kb.all_entities()))
 
         assert count1 == count2
         # Cache should be recreated

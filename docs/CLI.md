@@ -124,7 +124,7 @@ The configuration names map to spaCy component factories:
   "candidate_generator": {"name": "fuzzy", "params": {"top_k": 10}},
   "reranker": {"name": "none"},
   "disambiguator": {"name": "first"},
-  "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}}
+  "knowledge_base": {"name": "jsonl", "params": {"path": "kb.jsonl"}}
 }
 ```
 
@@ -146,7 +146,7 @@ The configuration names map to spaCy component factories:
     "params": {"model_name": "cross-encoder/ms-marco-MiniLM-L-6-v2", "top_k": 10}
   },
   "disambiguator": {"name": "first"},
-  "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}}
+  "knowledge_base": {"name": "jsonl", "params": {"path": "kb.jsonl"}}
 }
 ```
 
@@ -185,7 +185,7 @@ The configuration names map to spaCy component factories:
     }
   },
   "knowledge_base": {
-    "name": "custom",
+    "name": "jsonl",
     "params": {"path": "entities.jsonl"}
   }
 }

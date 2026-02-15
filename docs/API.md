@@ -14,36 +14,37 @@ This document provides a comprehensive reference for LELA Python API, built on s
 
 ## Core Classes
 
-### ELPipeline
+### Lela
 
-The main orchestrator class that manages the entity linking pipeline using spaCy.
+The main entry point for LELA entity linking. Accepts a configuration as a plain dict or a path to a JSON file.
 
 **Location:** `lela/pipeline.py`
 
 ```python
-from lela.pipeline import ELPipeline
-from lela.config import PipelineConfig
+from lela import Lela
 ```
 
 #### Constructor
 
 ```python
-ELPipeline(config: PipelineConfig, progress_callback: Optional[Callable[[float, str], None]] = None)
+Lela(config, *, progress_callback=None, cancel_event=None)
 ```
 
 **Parameters:**
-- `config`: A `PipelineConfig` object containing pipeline configuration
+- `config`: A dict with pipeline configuration, or a path (`str`/`Path`) to a JSON config file
 - `progress_callback`: Optional callback function `(progress: float, description: str) -> None` for tracking initialization progress (0.0 to 1.0)
+- `cancel_event`: Optional `threading.Event` to signal cancellation
 
 **Initialization:**
+- If `config` is a path, loads it as JSON
 - Instantiates knowledge base and document loader from registries
 - Builds a spaCy `Language` pipeline with configured components
 - Sets up caching directory
 
-**Internal Structure:**
-- `self.nlp`: The spaCy `Language` instance with pipeline components
-- `self.kb`: Knowledge base instance
-- `self.loader`: Document loader instance
+**Properties:**
+- `nlp`: The spaCy `Language` instance with pipeline components
+- `kb`: Knowledge base instance
+- `loader`: Document loader instance
 
 #### Methods
 
@@ -109,12 +110,12 @@ result = pipeline.process_document_with_progress(
 # 100.0%: Document processing complete
 ```
 
-##### `run(paths: Iterable[str], output_path: Optional[str] = None) -> List[Dict]`
+##### `run(*paths, output_path=None) -> List[Dict]`
 
-Process multiple files through the pipeline.
+Process one or more files through the pipeline.
 
 **Parameters:**
-- `paths`: Iterable of file paths to process
+- `*paths`: One or more file paths to process
 - `output_path`: Optional path to write JSONL output
 
 **Returns:**
@@ -122,63 +123,16 @@ Process multiple files through the pipeline.
 
 **Example:**
 ```python
-pipeline = ELPipeline(config)
-results = pipeline.run(
-    ["doc1.txt", "doc2.pdf", "doc3.html"],
-    output_path="results.jsonl"
-)
+lela = Lela("config.json")
+results = lela.run("doc1.txt", "doc2.pdf", "doc3.html", output_path="results.jsonl")
 ```
 
-### PipelineConfig
+### Configuration
 
-Configuration dataclass for pipeline setup.
+`Lela` accepts a plain dict or a JSON file path. The dict has these top-level keys:
 
-**Location:** `lela/config.py`
-
-```python
-from lela.config import PipelineConfig
-```
-
-#### Class Methods
-
-##### `from_json(path: str | Path) -> PipelineConfig`
-
-Create a configuration from a JSON file.
-
-**Parameters:**
-- `path`: Path to a JSON configuration file
-
-**Example:**
-```python
-config = PipelineConfig.from_json("config.json")
-```
-
-##### `from_dict(config_dict: Dict) -> PipelineConfig`
-
-Create a configuration from a dictionary.
-
-**Parameters:**
-- `config_dict`: Dictionary with configuration options
-
-**Example:**
-```python
-config_dict = {
-    "loader": {"name": "text"},
-    "ner": {"name": "simple", "params": {"min_len": 3}},
-    "candidate_generator": {"name": "fuzzy", "params": {"top_k": 10}},
-    "reranker": {"name": "none"},
-    "disambiguator": {"name": "first"},
-    "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}},
-    "cache_dir": ".ner_cache",
-    "batch_size": 1
-}
-config = PipelineConfig.from_dict(config_dict)
-```
-
-#### Attributes
-
-| Attribute | Type | Description |
-|-----------|------|-------------|
+| Key | Type | Description |
+|-----|------|-------------|
 | `loader` | Dict | Loader configuration |
 | `ner` | Dict | NER component configuration |
 | `candidate_generator` | Dict | Candidate generator configuration |
@@ -187,6 +141,26 @@ config = PipelineConfig.from_dict(config_dict)
 | `knowledge_base` | Dict | Knowledge base configuration |
 | `cache_dir` | str | Directory for document caching |
 | `batch_size` | int | Batch size for processing |
+
+**Example:**
+```python
+from lela import Lela
+
+# From a JSON file path
+lela = Lela("config.json")
+
+# From a dict
+lela = Lela({
+    "loader": {"name": "text"},
+    "ner": {"name": "simple", "params": {"min_len": 3}},
+    "candidate_generator": {"name": "fuzzy", "params": {"top_k": 10}},
+    "reranker": {"name": "none"},
+    "disambiguator": {"name": "first"},
+    "knowledge_base": {"name": "jsonl", "params": {"path": "kb.jsonl"}},
+    "cache_dir": ".ner_cache",
+    "batch_size": 1
+})
+```
 
 ## spaCy Components
 
@@ -532,7 +506,7 @@ candidate = Candidate(
 | `lela_openai_api` | `lela_lela_openai_api_disambiguator` |
 | `first` | `lela_first_disambiguator` |
 
-**Note:** The `lela_lela_gliner` factory is registered and can be used directly with `nlp.add_pipe()`, but is not yet available as a config name through `ELPipeline`.
+**Note:** The `lela_lela_gliner` factory is registered and can be used directly with `nlp.add_pipe()`, but is not yet available as a config name through `Lela`.
 
 #### Loaders (Registry-based)
 
@@ -570,7 +544,7 @@ The `json` and `jsonl` loaders support a `text_field` parameter to customize whi
 
 | Name | Parameters | Description |
 |------|------------|-------------|
-| `custom` | `path`, `cache_dir` | Custom JSONL KB (supports persistent caching) |
+| `jsonl` | `path`, `cache_dir` | JSONL KB (supports persistent caching) |
 
 ## Context Extraction
 
@@ -625,14 +599,12 @@ The pipeline supports progress callbacks at multiple levels for tracking process
 #### Pipeline Initialization
 
 ```python
-from lela.pipeline import ELPipeline
-from lela.config import PipelineConfig
+from lela import Lela
 
 def init_callback(progress: float, description: str):
     print(f"Init {progress*100:.0f}%: {description}")
 
-config = PipelineConfig.from_dict(config_dict)
-pipeline = ELPipeline(config, progress_callback=init_callback)
+lela = Lela(config_dict, progress_callback=init_callback)
 # Output:
 # Init 0%: Loading knowledge base...
 # Init 15%: Initializing document loader...
@@ -649,7 +621,7 @@ pipeline = ELPipeline(config, progress_callback=init_callback)
 def process_callback(progress: float, description: str):
     print(f"Processing {progress*100:.0f}%: {description}")
 
-result = pipeline.process_document_with_progress(doc, progress_callback=process_callback)
+result = lela.process_document_with_progress(doc, progress_callback=process_callback)
 ```
 
 ---
@@ -771,14 +743,11 @@ answer: 1
 ### Basic Pipeline Usage
 
 ```python
-from lela import PipelineConfig, ELPipeline
+from lela import Lela
 from lela.types import Document
 
 # Load configuration from JSON file
-config = PipelineConfig.from_json("config.json")
-
-# Create pipeline (builds spaCy nlp internally)
-pipeline = ELPipeline(config)
+lela = Lela("config.json")
 
 # Process single document
 doc = Document(
@@ -786,7 +755,7 @@ doc = Document(
     text="Albert Einstein was born in Germany and later moved to the United States.",
     meta={}
 )
-result = pipeline.process_document(doc)
+result = lela.process_document(doc)
 
 # Print results
 for entity in result["entities"]:
@@ -801,7 +770,7 @@ for entity in result["entities"]:
 ```python
 import spacy
 from lela import spacy_components  # Register factories
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 # Build custom pipeline
 nlp = spacy.blank("en")
@@ -810,7 +779,7 @@ cand_component = nlp.add_pipe("lela_fuzzy_candidates", config={"top_k": 10})
 disamb_component = nlp.add_pipe("lela_first_disambiguator")
 
 # Initialize with knowledge base
-kb = CustomJSONLKnowledgeBase(path="kb.jsonl")
+kb = JSONLKnowledgeBase(path="kb.jsonl")
 cand_component.initialize(kb)
 disamb_component.initialize(kb)
 
@@ -830,10 +799,7 @@ for ent in doc.ents:
 
 ```python
 # Process multiple files with output
-results = pipeline.run(
-    paths=["doc1.txt", "doc2.pdf", "doc3.html"],
-    output_path="output/results.jsonl"
-)
+results = lela.run("doc1.txt", "doc2.pdf", "doc3.html", output_path="output/results.jsonl")
 
 # Results are also returned
 for result in results:
@@ -843,10 +809,10 @@ for result in results:
 ### Working with Knowledge Bases
 
 ```python
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 # Load knowledge base
-kb = CustomJSONLKnowledgeBase(path="entities.jsonl")
+kb = JSONLKnowledgeBase(path="entities.jsonl")
 
 # Get entity by ID
 entity = kb.get_entity("Q937")
@@ -892,7 +858,7 @@ config_dict = {
         }
     },
     "knowledge_base": {
-        "name": "custom",
+        "name": "jsonl",
         "params": {"path": "entities.jsonl"}
     }
 }

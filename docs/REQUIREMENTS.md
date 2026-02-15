@@ -249,8 +249,8 @@ export CUDA_VISIBLE_DEVICES=0,1
 
 # Configure vLLM tensor parallelism
 python -c "
-from lela.config import PipelineConfig
-config = PipelineConfig.from_dict({
+from lela import Lela
+lela = Lela({
     'disambiguator': {
         'name': 'lela_vllm',
         'params': {'tensor_parallel_size': 2}

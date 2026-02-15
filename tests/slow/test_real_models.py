@@ -72,8 +72,7 @@ class TestGLiNER:
     def test_lela_gliner_chunking(self, sample_text: str, minimal_config_dict: dict):
         """LELA GLiNER processes long text with chunking."""
         try:
-            from lela.config import PipelineConfig
-            from lela.pipeline import ELPipeline
+            from lela import Lela
             from lela.types import Document
         except ImportError:
             pytest.skip("lela not available")
@@ -95,13 +94,12 @@ class TestGLiNER:
         }
 
         try:
-            config = PipelineConfig.from_dict(config_dict)
-            pipeline = ELPipeline(config)
+            lela = Lela(config_dict)
 
             # Create a long document that requires chunking
             long_text = sample_text * 10
             doc = Document(id="test-long", text=long_text)
-            result = pipeline.process_document(doc)
+            result = lela.process_document(doc)
 
             assert "entities" in result
             assert isinstance(result["entities"], list)

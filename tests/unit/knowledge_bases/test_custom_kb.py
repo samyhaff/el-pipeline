@@ -1,4 +1,4 @@
-"""Unit tests for CustomJSONLKnowledgeBase."""
+"""Unit tests for JSONLKnowledgeBase."""
 
 import json
 import os
@@ -6,12 +6,12 @@ import tempfile
 
 import pytest
 
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 from lela.types import Entity
 
 
-class TestCustomJSONLKnowledgeBase:
-    """Tests for CustomJSONLKnowledgeBase class."""
+class TestJSONLKnowledgeBase:
+    """Tests for JSONLKnowledgeBase class."""
 
     @pytest.fixture
     def kb_data(self) -> list[dict]:
@@ -32,35 +32,35 @@ class TestCustomJSONLKnowledgeBase:
         os.unlink(path)
 
     @pytest.fixture
-    def kb(self, temp_kb_file: str) -> CustomJSONLKnowledgeBase:
-        return CustomJSONLKnowledgeBase(path=temp_kb_file)
+    def kb(self, temp_kb_file: str) -> JSONLKnowledgeBase:
+        return JSONLKnowledgeBase(path=temp_kb_file)
 
-    def test_load_entities_from_file(self, kb: CustomJSONLKnowledgeBase):
+    def test_load_entities_from_file(self, kb: JSONLKnowledgeBase):
         entities = list(kb.all_entities())
         assert len(entities) == 4
 
-    def test_get_entity_by_id(self, kb: CustomJSONLKnowledgeBase):
+    def test_get_entity_by_id(self, kb: JSONLKnowledgeBase):
         entity = kb.get_entity("Q1")
         assert entity is not None
         assert entity.id == "Q1"
         assert entity.title == "Barack Obama"
         assert entity.description == "44th US President"
 
-    def test_get_nonexistent_entity(self, kb: CustomJSONLKnowledgeBase):
+    def test_get_nonexistent_entity(self, kb: JSONLKnowledgeBase):
         entity = kb.get_entity("Q999")
         assert entity is None
 
-    def test_search_finds_matches(self, kb: CustomJSONLKnowledgeBase):
+    def test_search_finds_matches(self, kb: JSONLKnowledgeBase):
         results = kb.search("Obama", top_k=5)
         assert len(results) > 0
         titles = [e.title for e in results]
         assert "Barack Obama" in titles
 
-    def test_search_top_k_limit(self, kb: CustomJSONLKnowledgeBase):
+    def test_search_top_k_limit(self, kb: JSONLKnowledgeBase):
         results = kb.search("United", top_k=2)
         assert len(results) <= 2
 
-    def test_all_entities_returns_iterable(self, kb: CustomJSONLKnowledgeBase):
+    def test_all_entities_returns_iterable(self, kb: JSONLKnowledgeBase):
         entities = kb.all_entities()
         assert hasattr(entities, "__iter__")
         entity_list = list(entities)
@@ -75,7 +75,7 @@ class TestCustomJSONLKnowledgeBase:
                 f.write(json.dumps(item) + "\n")
             path = f.name
         try:
-            kb = CustomJSONLKnowledgeBase(path=path)
+            kb = JSONLKnowledgeBase(path=path)
             entity = kb.get_entity("Q1")
             assert entity.metadata["extra_field"] == "value"
             assert entity.metadata["count"] == 42
@@ -89,7 +89,7 @@ class TestCustomJSONLKnowledgeBase:
                 f.write(json.dumps(item) + "\n")
             path = f.name
         try:
-            kb = CustomJSONLKnowledgeBase(path=path)
+            kb = JSONLKnowledgeBase(path=path)
             entity = kb.get_entity("Q1")
             assert entity.title == "Q1"  # Falls back to ID
         finally:
@@ -102,7 +102,7 @@ class TestCustomJSONLKnowledgeBase:
                 f.write(json.dumps(item) + "\n")
             path = f.name
         try:
-            kb = CustomJSONLKnowledgeBase(path=path)
+            kb = JSONLKnowledgeBase(path=path)
             entity = kb.get_entity("Q1")
             assert entity.description is None
         finally:
@@ -112,13 +112,13 @@ class TestCustomJSONLKnowledgeBase:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             path = f.name
         try:
-            kb = CustomJSONLKnowledgeBase(path=path)
+            kb = JSONLKnowledgeBase(path=path)
             entities = list(kb.all_entities())
             assert len(entities) == 0
         finally:
             os.unlink(path)
 
-    def test_search_case_insensitive(self, kb: CustomJSONLKnowledgeBase):
+    def test_search_case_insensitive(self, kb: JSONLKnowledgeBase):
         # Search behavior depends on rapidfuzz implementation
         results = kb.search("OBAMA", top_k=5)
         # Should find Barack Obama
@@ -126,7 +126,7 @@ class TestCustomJSONLKnowledgeBase:
 
     def test_fixture_based_kb(self, temp_jsonl_kb: str):
         """Test using the conftest fixture."""
-        kb = CustomJSONLKnowledgeBase(path=temp_jsonl_kb)
+        kb = JSONLKnowledgeBase(path=temp_jsonl_kb)
         entities = list(kb.all_entities())
         assert len(entities) > 0
         # Check one of the sample entities

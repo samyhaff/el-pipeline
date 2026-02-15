@@ -1,4 +1,4 @@
-"""Unit tests for CustomJSONLKnowledgeBase caching."""
+"""Unit tests for JSONLKnowledgeBase caching."""
 
 import json
 import os
@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 
 class TestKBCaching:
@@ -38,13 +38,13 @@ class TestKBCaching:
 
     def test_no_cache_dir_works_normally(self, temp_kb_file: str):
         """KB loads normally without cache_dir (backward compatible)."""
-        kb = CustomJSONLKnowledgeBase(path=temp_kb_file)
+        kb = JSONLKnowledgeBase(path=temp_kb_file)
         assert len(list(kb.all_entities())) == 3
         assert kb.get_entity("Q1").title == "Barack Obama"
 
     def test_first_load_creates_cache_file(self, temp_kb_file: str, cache_dir: str):
         """First load with cache_dir creates a .pkl file under kb/ subdir."""
-        kb = CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        kb = JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
         assert len(list(kb.all_entities())) == 3
 
         kb_cache_dir = os.path.join(cache_dir, "kb")
@@ -55,8 +55,8 @@ class TestKBCaching:
 
     def test_second_load_uses_cache(self, temp_kb_file: str, cache_dir: str):
         """Second load reads from cache, producing identical data."""
-        kb1 = CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
-        kb2 = CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        kb1 = JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        kb2 = JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
 
         entities1 = {e.id: e for e in kb1.all_entities()}
         entities2 = {e.id: e for e in kb2.all_entities()}
@@ -70,11 +70,11 @@ class TestKBCaching:
 
     def test_cached_data_matches_original(self, temp_kb_file: str, cache_dir: str):
         """Entities and titles from cache are identical to JSONL parse."""
-        kb_no_cache = CustomJSONLKnowledgeBase(path=temp_kb_file)
+        kb_no_cache = JSONLKnowledgeBase(path=temp_kb_file)
         # Populate cache
-        CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
         # Load from cache
-        kb_cached = CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        kb_cached = JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
 
         assert kb_no_cache.titles == kb_cached.titles
         for eid in kb_no_cache.entities:
@@ -86,7 +86,7 @@ class TestKBCaching:
 
     def test_identity_hash_is_stable(self, temp_kb_file: str):
         """Same file produces the same identity_hash on repeated calls."""
-        kb = CustomJSONLKnowledgeBase(path=temp_kb_file)
+        kb = JSONLKnowledgeBase(path=temp_kb_file)
         hash1 = kb.identity_hash
         hash2 = kb.identity_hash
         assert hash1 == hash2
@@ -100,7 +100,7 @@ class TestKBCaching:
             path = f.name
 
         try:
-            kb1 = CustomJSONLKnowledgeBase(path=path)
+            kb1 = JSONLKnowledgeBase(path=path)
             hash1 = kb1.identity_hash
 
             # Wait a bit and append data to change mtime and size
@@ -108,7 +108,7 @@ class TestKBCaching:
             with open(path, "a") as f:
                 f.write(json.dumps({"id": "Q99", "title": "New Entity", "description": "Added"}) + "\n")
 
-            kb2 = CustomJSONLKnowledgeBase(path=path)
+            kb2 = JSONLKnowledgeBase(path=path)
             hash2 = kb2.identity_hash
 
             assert hash1 != hash2
@@ -124,7 +124,7 @@ class TestKBCaching:
 
         try:
             # Populate cache
-            kb1 = CustomJSONLKnowledgeBase(path=path, cache_dir=cache_dir)
+            kb1 = JSONLKnowledgeBase(path=path, cache_dir=cache_dir)
             assert len(list(kb1.all_entities())) == 3
 
             # Modify file
@@ -133,7 +133,7 @@ class TestKBCaching:
                 f.write(json.dumps({"id": "Q99", "title": "New Entity", "description": "Added"}) + "\n")
 
             # Load again - should rebuild and include new entity
-            kb2 = CustomJSONLKnowledgeBase(path=path, cache_dir=cache_dir)
+            kb2 = JSONLKnowledgeBase(path=path, cache_dir=cache_dir)
             assert len(list(kb2.all_entities())) == 4
             assert kb2.get_entity("Q99") is not None
 
@@ -147,7 +147,7 @@ class TestKBCaching:
     def test_corrupt_cache_falls_back_to_jsonl(self, temp_kb_file: str, cache_dir: str):
         """Corrupt cache file triggers a fallback to full JSONL parse."""
         # First load to create cache
-        kb1 = CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        kb1 = JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
         hash_val = kb1.identity_hash
 
         # Corrupt the cache file
@@ -157,21 +157,21 @@ class TestKBCaching:
             f.write(b"corrupted data")
 
         # Should still load successfully from JSONL
-        kb2 = CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        kb2 = JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
         assert len(list(kb2.all_entities())) == 3
         assert kb2.get_entity("Q1").title == "Barack Obama"
 
     def test_source_path_stored(self, temp_kb_file: str):
         """source_path attribute is set to the original file path."""
-        kb = CustomJSONLKnowledgeBase(path=temp_kb_file)
+        kb = JSONLKnowledgeBase(path=temp_kb_file)
         assert kb.source_path == temp_kb_file
 
     def test_cache_dir_does_not_affect_search(self, temp_kb_file: str, cache_dir: str):
         """Search still works after loading from cache."""
         # Populate cache
-        CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
         # Load from cache
-        kb = CustomJSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
+        kb = JSONLKnowledgeBase(path=temp_kb_file, cache_dir=cache_dir)
 
         results = kb.search("Obama", top_k=5)
         assert len(results) > 0

@@ -99,7 +99,7 @@ class ELPipeline:
 
             path = ensure_yago_kb()
             config.knowledge_base = ComponentConfig(
-                name="custom", params={"path": path}
+                name="jsonl", params={"path": path}
             )
 
         self.kb = None
@@ -514,3 +514,103 @@ class ELPipeline:
                     writer.write(json.dumps(result) + "\n")
 
         return results
+
+
+class Lela:
+    """Main entry point for LELA entity linking.
+
+    Accepts a configuration as a plain dict or a path to a JSON file,
+    and provides a simple interface for running entity linking on documents.
+
+    Examples::
+
+        from lela import Lela
+
+        # From a JSON file path
+        lela = Lela("config.json")
+        results = lela.run("docs/file1.txt", "docs/file2.txt")
+
+        # From a dict
+        import json
+        config = json.load(open("config.json"))
+        lela = Lela(config)
+        results = lela.run("docs/file1.txt")
+    """
+
+    def __init__(self, config, *, progress_callback=None, cancel_event=None):
+        """
+        Args:
+            config: A dict with pipeline configuration, or a path (str/Path)
+                    to a JSON config file.
+            progress_callback: Optional callback ``(progress: float, description: str) -> None``
+                    for tracking initialization progress (0.0 to 1.0).
+            cancel_event: Optional ``threading.Event`` to signal cancellation.
+        """
+        if isinstance(config, (str, Path)):
+            with open(config) as f:
+                config = json.load(f)
+        self._pipeline = ELPipeline(
+            PipelineConfig.from_dict(config),
+            progress_callback=progress_callback,
+            cancel_event=cancel_event,
+        )
+
+    @property
+    def loader(self):
+        """The document loader instance."""
+        return self._pipeline.loader
+
+    @property
+    def kb(self):
+        """The knowledge base instance."""
+        return self._pipeline.kb
+
+    @property
+    def nlp(self):
+        """The underlying spaCy Language pipeline."""
+        return self._pipeline.nlp
+
+    def run(self, *paths, output_path=None):
+        """Process one or more files through the pipeline.
+
+        Args:
+            *paths: One or more file paths to process.
+            output_path: Optional path to write JSONL output.
+
+        Returns:
+            List of result dicts.
+        """
+        return self._pipeline.run(list(paths), output_path=output_path)
+
+    def process_document(self, doc):
+        """Process a single Document through the pipeline.
+
+        Args:
+            doc: A ``Document`` object to process.
+
+        Returns:
+            Dict with extracted entities and metadata.
+        """
+        return self._pipeline.process_document(doc)
+
+    def process_document_with_progress(
+        self,
+        doc,
+        progress_callback=None,
+        base_progress=0.0,
+        progress_range=1.0,
+    ):
+        """Process a single Document with progress callbacks.
+
+        Args:
+            doc: A ``Document`` object to process.
+            progress_callback: Optional callback ``(progress: float, description: str) -> None``.
+            base_progress: Starting progress value (0.0-1.0).
+            progress_range: How much progress this processing represents (0.0-1.0).
+
+        Returns:
+            Dict with extracted entities and metadata.
+        """
+        return self._pipeline.process_document_with_progress(
+            doc, progress_callback, base_progress, progress_range
+        )

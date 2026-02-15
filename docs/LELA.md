@@ -136,7 +136,7 @@ nlp.add_pipe("lela_lela_gliner", config={
 })
 ```
 
-**JSON Config (via ELPipeline):**
+**JSON Config (via Lela):**
 ```json
 {
   "name": "gliner",
@@ -148,7 +148,7 @@ nlp.add_pipe("lela_lela_gliner", config={
 }
 ```
 
-**Note:** The `lela_lela_gliner` factory uses LELA defaults and can be used directly with `nlp.add_pipe()`. Through `ELPipeline`, use config name `"gliner"` with LELA model parameters.
+**Note:** The `lela_lela_gliner` factory uses LELA defaults and can be used directly with `nlp.add_pipe()`. Through `Lela`, use config name `"gliner"` with LELA model parameters.
 
 ### LELA Candidate Generation
 
@@ -341,7 +341,7 @@ disamb.initialize(kb)
 
 ### Knowledge Base
 
-LELA components use the `custom` JSONL knowledge base.
+LELA components use the `jsonl` knowledge base.
 
 **Format:**
 ```jsonl
@@ -352,7 +352,7 @@ LELA components use the `custom` JSONL knowledge base.
 **JSON Config:**
 ```json
 {
-  "name": "custom",
+  "name": "jsonl",
   "params": {
     "path": "entities.jsonl"
   }
@@ -398,7 +398,7 @@ LELA components use the `custom` JSONL knowledge base.
     }
   },
   "knowledge_base": {
-    "name": "custom",
+    "name": "jsonl",
     "params": {"path": "kb.jsonl"}
   }
 }
@@ -422,7 +422,7 @@ For faster processing without GPU requirements:
   "reranker": {"name": "none"},
   "disambiguator": {"name": "first"},
   "knowledge_base": {
-    "name": "custom",
+    "name": "jsonl",
     "params": {"path": "kb.jsonl"}
   }
 }
@@ -560,28 +560,23 @@ Singleton pools for resource management.
 
 ## Usage Examples
 
-### Python API with LELA (via ELPipeline)
+### Python API with LELA
 
 ```python
-from lela.config import PipelineConfig
-from lela.pipeline import ELPipeline
-import json
+from lela import Lela
 
 # Load LELA configuration
-config_dict = {
+lela = Lela({
     "loader": {"name": "text"},
     "ner": {"name": "gliner", "params": {"threshold": 0.5}},
     "candidate_generator": {"name": "lela_dense", "params": {"top_k": 64}},
     "reranker": {"name": "none"},
     "disambiguator": {"name": "first"},
-    "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}}
-}
+    "knowledge_base": {"name": "jsonl", "params": {"path": "kb.jsonl"}}
+})
 
-config = PipelineConfig.from_dict(config_dict)
-pipeline = ELPipeline(config)
-
-# Process document
-results = pipeline.run(["document.txt"], output_path="results.jsonl")
+# Process documents
+results = lela.run("document.txt", output_path="results.jsonl")
 ```
 
 ### Direct spaCy Usage with LELA Components
@@ -589,7 +584,7 @@ results = pipeline.run(["document.txt"], output_path="results.jsonl")
 ```python
 import spacy
 from lela import spacy_components  # Register factories
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
 
 # Build LELA pipeline manually
 nlp = spacy.blank("en")
@@ -612,7 +607,7 @@ nlp.add_pipe("lela_noop_reranker")
 disamb = nlp.add_pipe("lela_first_disambiguator")
 
 # Initialize with KB
-kb = CustomJSONLKnowledgeBase(path="kb.jsonl")
+kb = JSONLKnowledgeBase(path="kb.jsonl")
 cand.initialize(kb)
 disamb.initialize(kb)
 

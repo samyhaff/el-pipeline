@@ -114,9 +114,9 @@ lela/
 ├── lela/              # Main Python package
 │   ├── __init__.py            # Package exports
 │   ├── types.py               # Data models (Document, Mention, Entity, etc.)
-│   ├── config.py              # PipelineConfig for configuration parsing
+│   ├── config.py              # Configuration parsing (internal)
 │   ├── registry.py            # Component registries (loaders, KBs)
-│   ├── pipeline.py            # Main ELPipeline orchestrator (spaCy-based)
+│   ├── pipeline.py            # Main Lela class and pipeline orchestrator
 │   ├── context.py             # Context extraction utilities
 │   ├── cli.py                 # CLI entry point
 │   │
@@ -175,12 +175,11 @@ python -m lela.cli \
 
 **Using the Python API:**
 ```python
-from lela import PipelineConfig, ELPipeline
+from lela import Lela
 
 # Load configuration and run pipeline
-config = PipelineConfig.from_json("config.json")
-pipeline = ELPipeline(config)
-results = pipeline.run(["document.txt"], output_path="results.jsonl")
+lela = Lela("config.json")
+results = lela.run("document.txt", output_path="results.jsonl")
 ```
 
 **Using spaCy directly (advanced):**
@@ -195,8 +194,8 @@ nlp.add_pipe("lela_fuzzy_candidates", config={"top_k": 10})
 nlp.add_pipe("lela_first_disambiguator")
 
 # Initialize components with KB
-from lela.knowledge_bases.custom import CustomJSONLKnowledgeBase
-kb = CustomJSONLKnowledgeBase(path="kb.jsonl")
+from lela.knowledge_bases.jsonl import JSONLKnowledgeBase
+kb = JSONLKnowledgeBase(path="kb.jsonl")
 
 for name, component in nlp.pipeline:
     if hasattr(component, "initialize"):
@@ -223,7 +222,7 @@ python app.py --port 7860
   "candidate_generator": {"name": "fuzzy", "params": {"top_k": 10}},
   "reranker": {"name": "none"},
   "disambiguator": {"name": "first"},
-  "knowledge_base": {"name": "custom", "params": {"path": "kb.jsonl"}},
+  "knowledge_base": {"name": "jsonl", "params": {"path": "kb.jsonl"}},
   "cache_dir": ".ner_cache"
 }
 ```

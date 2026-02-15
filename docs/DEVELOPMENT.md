@@ -22,7 +22,7 @@ LELA uses two extension mechanisms:
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
-│                        ELPipeline                            │
+│                           Lela                               │
 ├───────────────────────────────────────────────────────────────┤
 │  Registry Components          │  spaCy Components             │
 │  ├── Loaders                  │  ├── NER                      │
@@ -250,9 +250,9 @@ class SQLiteKnowledgeBase:
 
 | Name | Class | Location |
 |------|-------|----------|
-| `custom` | `CustomJSONLKnowledgeBase` | `lela/knowledge_bases/custom.py` |
+| `jsonl` | `JSONLKnowledgeBase` | `lela/knowledge_bases/jsonl.py` |
 
-**Note:** `CustomJSONLKnowledgeBase` supports persistent caching via the `cache_dir` parameter. When provided, parsed KB data is cached to disk and reused on subsequent loads, significantly reducing initialization time for large knowledge bases.
+**Note:** `JSONLKnowledgeBase` supports persistent caching via the `cache_dir` parameter. When provided, parsed KB data is cached to disk and reused on subsequent loads, significantly reducing initialization time for large knowledge bases.
 
 ---
 
@@ -579,7 +579,7 @@ loader = LoaderClass(**params)
 
 ### Pipeline Config Name Mapping
 
-The `ELPipeline` maps config names to spaCy factory names:
+`Lela` (internally via `ELPipeline`) maps config names to spaCy factory names:
 
 ```python
 # In lela/pipeline.py

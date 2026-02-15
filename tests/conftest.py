@@ -241,7 +241,7 @@ def minimal_config_dict(temp_jsonl_kb: str, temp_cache_dir: str) -> Dict:
             "params": {},
         },
         "knowledge_base": {
-            "name": "custom",
+            "name": "jsonl",
             "params": {"path": temp_jsonl_kb},
         },
         "cache_dir": temp_cache_dir,

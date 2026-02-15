@@ -27,7 +27,7 @@
     "params": {}
   },
   "knowledge_base": {
-    "name": "custom",
+    "name": "jsonl",
     "params": {
       "path": "entities.jsonl"
     }

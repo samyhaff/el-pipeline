@@ -410,8 +410,8 @@ app.py                              # Main Gradio application
 ### How It Works
 
 1. User configures pipeline options in the UI
-2. Configuration is translated to `PipelineConfig`
-3. `ELPipeline` builds a spaCy `Language` with selected components
+2. Configuration dict is passed to `Lela`
+3. `Lela` builds a spaCy `Language` with selected components
 4. Text is processed through `nlp(text)`
 5. Results are serialized and displayed
 
