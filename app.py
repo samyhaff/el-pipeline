@@ -1177,7 +1177,7 @@ if __name__ == "__main__":
 
     # Detect GPU total VRAM for GB sliders
     _resources = get_system_resources()
-    gpu_total_gb = max(_resources.gpu_vram_total_gb, 1.0)  # fallback minimum 1 GB
+    gpu_total_gb = round(max(_resources.gpu_vram_total_gb, 1.0), 2)  # fallback minimum 1 GB
     logger.info(f"GPU total VRAM: {gpu_total_gb:.1f} GB")
 
     components = get_available_components()
